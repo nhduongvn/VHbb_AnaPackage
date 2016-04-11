@@ -1,0 +1,58 @@
+#include "inc/CR_ZLF.h"
+#include "inc/Util.h"
+#include <iostream>
+#include <sstream>
+#include <string>
+
+
+CR_ZLF::CR_ZLF(int region): 
+  AnaBaseSelector() 
+{
+  
+  m_region = region ;   
+  m_wei = 1 ;
+}
+
+CR_ZLF::~CR_ZLF()
+{
+}
+
+
+void CR_ZLF::SlaveBegin(const BaseTree* r) 
+{
+  
+  std::stringstream s;
+  s << "CR_ZLF" << m_region; 
+  std::string sCR_ZLF = s.str();
+  TString stTmp = "Jet_pt_CR_ZLF" + sCR_ZLF ;
+  hJet_pt = new TH1D(stTmp, "", 1000, 0, 1000) ;
+  hJet_pt->Sumw2() ;
+
+};
+
+void CR_ZLF::Process(const BaseTree* r)
+{
+  //cout << "\n======================" ;
+  //cout << "\n " << r->EVENT_run << " " << r->EVENT_event ;
+  //cout << "\n Jet are: " ;
+  Obj objTmp ;
+  std::vector<Obj> selJets ;
+  for (int iJet = 0 ; iJet < r->nJet ; ++iJet) {
+    cout << "\n " << iJet << "  " << r->Jet_pt[iJet] << "  " << r->Jet_eta[iJet] << "  " << r->Jet_phi[iJet] ;
+    hJet_pt->Fill(r->Jet_pt[iJet]) ;
+    objTmp.Set("jet", iJet, r) ;
+    if (objTmp.SelectJet()) {
+      selJets.push_back(objTmp) ; 
+    }
+  }
+  //cout << endl ;
+
+}
+
+void CR_ZLF::SlaveTerminate(const BaseTree* r) 
+{  
+};
+
+void CR_ZLF::Terminate(TList* mergedList) 
+{
+}
