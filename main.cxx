@@ -14,7 +14,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sstream>
+#include <fstream>
 #include <vector>
+#include <string>
 
 #include <TROOT.h>
 #include <TSystem.h>
@@ -36,8 +38,9 @@
 #include "TString.h"
 
 #include "inc/AnaProcessor.h"
-#include "inc/SR.h"
 #include "inc/AnaConf.h"
+#include "inc/SR.h"
+#include "inc/CR_ZLF.h"
 
 //#include "Global.h" 
 
@@ -66,6 +69,12 @@ int main(int argc, char **argv)
    TString out_file_name = argv[4] ;
    TString uncertainty = argv[5] ;
    uncertainty.ToUpper() ;
+   //string lheHTcutIn = argv[6] ;
+   //float lheHTcut(10000) ;
+   //if (lheHTcutIn != "") lheHTcut = stof(lheHTcutIn) ;
+   string use_lheHTcut = argv[6] ;
+   TString proofLog = argv[7] ;
+   proofLog.ToUpper() ;
 
    //===Print out inputs===
   cout << "\n================= INPUTS ==================================" ;
@@ -74,6 +83,8 @@ int main(int argc, char **argv)
   cout << "\n File list:        " << infiles_list ;
   cout << "\n Output file name: " << out_file_name ;
   cout << "\n Uncertainty:      " << uncertainty ;
+  cout << "\n Use LHE HT cut:   " << use_lheHTcut ;
+  cout << "\n ProofLog:         " << proofLog ;
   cout << "\n===========================================================" ;
   
   bool runProof=false;
@@ -136,7 +147,9 @@ int main(int argc, char **argv)
       //proof= TProof::Open("lite://");
       //proof->Load("inc/AnaConf.h+",kTRUE);
       chain.SetProof();
-      TString tmpStr = "gSystem->Load(\""+TString(workDir)+"/lib/libMyLib.so\") ;" ;
+      TString tmpStr = "gSystem->Load(\"$ROOTSYS/lib/libPhysics.so\") ;" ;
+      proof->Exec(tmpStr) ;
+      tmpStr = "gSystem->Load(\""+TString(workDir)+"/lib/libMyLib.so\") ;" ;
       proof->Exec(tmpStr);  //without this no event loop
       TProof::AddEnvVar("WORK_DIR",TString(workDir)); //need this otherwise crash, not sure why
 //    proof->SetLogLevel(7); // to debug 
@@ -157,31 +170,64 @@ int main(int argc, char **argv)
   TString xdebug="0";
   
   
-  AnaConf sr_conf("SR0");
-  if (dataTypeIn == "DATA") sr_conf.setIsData("true");
-  if (dataTypeIn == "MCFILE") sr_conf.setIsData("false");
+  AnaConf sr_conf("SR_ZH");
+  if (dataTypeIn == "DATA") sr_conf.setIsData(true);
+  if (dataTypeIn == "MCFILE") {
+    sr_conf.setIsData(false);
+  }
+ 
+  AnaConf cr_zhf_conf("CR_ZH_ZHF") ;
+  if (dataTypeIn == "DATA") cr_zhf_conf.setIsData(true);
+  if (dataTypeIn == "MCFILE") {
+    cr_zhf_conf.setIsData(false);
+  }
   
+  AnaConf cr_zlf_conf("CR_ZH_ZLF") ;
+  if (dataTypeIn == "DATA") cr_zlf_conf.setIsData(true);
+  if (dataTypeIn == "MCFILE") {
+    cr_zlf_conf.setIsData(false);
+  }
+  
+  AnaConf cr_tt_conf("CR_ZH_TT") ;
+  if (dataTypeIn == "DATA") cr_tt_conf.setIsData(true);
+  if (dataTypeIn == "MCFILE") {
+    cr_tt_conf.setIsData(false);
+  }
+
+ 
   TNamed* fOutName = new TNamed("outputfilename", out_file_name.Data()) ;
   //TNamed* dataType = new TNamed("DATA_TYPE", dataTypeIn) ;
   TList* inputList = new TList() ;
   if (runProof) {
     proof->AddInput(&sr_conf);
+    proof->AddInput(&cr_zhf_conf) ;
+    proof->AddInput(&cr_zlf_conf) ;
+    proof->AddInput(&cr_tt_conf) ;
+
     proof->AddInput(fOutName) ;
     //proof->AddInput(dataType) ;
   }
   else {
     //gDirectory->Add(&sr_conf) ;--> this works too but causing confusion related to what dirrectory is the current directory
     inputList->Add(&sr_conf) ;
+    inputList->Add(&cr_zhf_conf) ;
+    inputList->Add(&cr_zlf_conf) ;
+    inputList->Add(&cr_tt_conf) ;
+
     inputList->Add(fOutName) ;
     //inputList->Add(dataType) ;
   }
   
   AnaProcessor analysis;
+  //analysis.set_LHE_HTcut(lheHTcut) ;
   //analysis.m_doRunProof = runProof ;
   //analysis.m_outputfilename = "test.root" ;
   if (!runProof) analysis.SetInputList(inputList) ;
-  chain.Process(&analysis, "", 100) ;
-  //chain.Process(&analysis) ;
+
+  TString option = "" ;
+  if (use_lheHTcut == "TRUE") option = "USE_LHE_CUT" ; 
+  //chain.Process(&analysis, "", 100) ;
+  chain.Process(&analysis, option) ;
   
   //if (glob.debug) xdebug="1";
   //TString syst = TString::Format("%d",glob.systematics);
@@ -211,12 +257,74 @@ int main(int argc, char **argv)
 // write out log file on Proof master/worker nodes
   if (runProof) {
     TProofLog *pl = proof->GetManager()->GetSessionLogs();
-    pl->Save("*", "/uscms_data/d3/duong/Output/HVbb-AnaPackage/main_proof.log");
+    if (proofLog == "") {
+      pl->Save("*", "/uscms_data/d3/duong/Output/HVbb-AnaPackage/main_proof.log");
+    }
+    else {
+      pl->Save("*", "/uscms_data/d3/duong/Output/HVbb-AnaPackage/" + proofLog + ".log");
+    }
 
   }
 
+ //===Add some histograms to output files===
+ //int Nfiles = fc.GetNFiles() ;
+    //for (int i = 0; i < Nfiles; i++) {
+      // float donefiles= (float)i / (float)Nfiles;
+       //cout << "\nfile to read:" << glob.ntup[i] << endl;
+       //chain.Add(glob.ntup[i].c_str(),-1); // do not add non-recovebale
+    //}
 
- cout << " --- All done! ---" << endl;
+  //TIter next(fc.GetList()) ; 
+  //while(TObject* obj = next() ) {
+    //TString objName = obj->GetName();
+    //cout << "\n Filename: " << objName << "  " << obj->IsA()->GetName() ;
+  //}
+  
+  TH1D* hChainEntry = new TH1D("ChainEntries", "", 1, 0, 2) ;
+  hChainEntry->SetBinContent(1, chain.GetEntries()) ;
+
+  std::ifstream infile_listTmp(infiles_list) ;
+  std::string line;
+  TH1D* hCount = new TH1D("TotalCount", "", 4, 0, 4) ;
+  hCount->GetXaxis()->SetBinLabel(1, "Count") ;
+  hCount->GetXaxis()->SetBinLabel(2, "Count_pos_weight") ;
+  hCount->GetXaxis()->SetBinLabel(3, "Count_neg_weight") ;
+  hCount->GetXaxis()->SetBinLabel(4, "Count_pos_minus_neg_weight") ;
+  double counts[4] = {0,0,0,0} ;
+  TFile* fTmp ;
+  while (std::getline(infile_listTmp, line))
+  {
+    std::istringstream iss(line);
+    string fileName ;
+    if (!(iss >> fileName)) { cout << "\n Error while getting plot name " << line << endl ; break; } // error
+    cout << fileName << endl ;
+    fTmp = TFile::Open(TString(fileName), "READ") ;
+    if (fTmp) { 
+      TH1D* h = (TH1D*)fTmp->Get("Count") ;
+      counts[0] += h->GetBinContent(1) ;
+      h = (TH1D*)fTmp->Get("CountPosWeight") ;
+      counts[1] += h->GetBinContent(1) ;
+      h = (TH1D*)fTmp->Get("CountNegWeight") ;
+      counts[2] += h->GetBinContent(1) ;
+    }
+    fTmp->Close() ;
+    delete fTmp ;
+  }
+
+  counts[3] = counts[1] - counts[2] ;
+    
+   for (int i = 0; i <4; i++) {
+     hCount->SetBinContent(i+1, counts[i]) ;
+     cout << "\n" << hCount->GetXaxis()->GetBinLabel(i+1) << "\t" << hCount->GetBinContent(i+1) << endl ;
+   }
+  
+  fTmp = TFile::Open(out_file_name.Data(), "UPDATE") ;
+  fTmp->cd() ;
+  hCount->Write() ;
+  hChainEntry->Write() ;
+  fTmp->Close() ;
+
+  cout << " --- All done! ---" << endl;
 
 
   return 0;
