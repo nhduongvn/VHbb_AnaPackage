@@ -11,16 +11,40 @@
 import sys,os,string, commands
 import time
 
+def findSubFolders(path, fileList):
+  os.system('rm tmp.txt')
+  os.system('xrdfs root://cmseos.fnal.gov ls -u ' + path + '/ > tmp.txt')
+  f = open('tmp.txt')
+  lines = f.readlines()
+  f.close()
+#  print lines
+  if len(lines) == 0:
+    return 0
+#  print lines[0]
+  if lines[0].find('.root') != -1:
+    os.system('xrdfs root://cmseos.fnal.gov ls -u ' + path + '/ >> ' + fileList)
+  else:
+    for line in lines:
+      line = line.replace('\n','')
+      line = '/store' + line.split('/store')[1]
+#      print line
+      findSubFolders(line,fileList)
+  return 1
+
+
+
 CWD = os.getcwd()
 os.chdir(CWD)
 
 runDir = '/uscms/home/duong/HVbb/AnaPackage/'
 inDS = 'dataList.txt'
-outFilePrenameAna = "test" #prename for skim jobs is ds
+#outFilePrenameAna = "test_04_01_2016" #prename for skim jobs is ds
+outFilePrenameAna = "test_04_07_2016" #prename for skim jobs is ds
 runMode = sys.argv[1] #NoProof or ProofLite 
+doLHE_HT_cut = True
 
-base_tree_data = "BaseTree/BaseTree_data_V15"
-base_tree_MC = "BaseTree/BaseTree_MC"
+base_tree_data = "BaseTree/BaseTree_data_V21"
+base_tree_MC = "BaseTree/BaseTree_MC_V21"
 
 #==uncertainty===
 #NOM, JECU, JECD, PUU, PUD
@@ -47,7 +71,7 @@ for line in datalist:
     print 'current data list is: ', ds
 
 #identify data type
-    if line.find('SingleElectron') != -1 or line.find('DoubleEG') != -1:
+    if line.find('SingleElectron') != -1 or line.find('SingleMuon') != -1 or line.find('DoubleEG') != -1 or line.find('DoubleMuon') != -1:
       dsType = 'DATA'
       print 'Runing on ', dsType
     else:
@@ -86,24 +110,35 @@ for line in datalist:
         print a, b, c
         com = 'xrdfs root://cmseos.fnal.gov ls -u ' + c + ' | grep ' + b + ' >> ' + infiles
       else:
-        com = 'xrdfs root://cmseos.fnal.gov ls -u ' + ds + ' >> ' + infiles
+        findSubFolders(ds, infiles)
+        #com = 'xrdfs root://cmseos.fnal.gov ls -u ' + ds + ' >> ' + infiles
        
     print com
     os.system(com)
 
 #run over file list
 
+    use_lheHTcut = 'FALSE'
+    dyNameTmp = 'DYJetsToLL_M-50_TuneCUETP8M1_13TeV'
+    if doLHE_HT_cut and ds.find(dyNameTmp) != -1:
+      use_lheHTcut = 'TRUE'
+
 #get output filename
     a = ds.split('/')
-    outnamepre = (runDir + "/Output/" + outFilePrenameAna + '_' + a[len(a)-3]).replace('\n','') 
+    #outnamepre = (runDir + "/Output/" + outFilePrenameAna + '_' + a[len(a)-3]).replace('\n','') 
+    outnamepre = (runDir + "../Output/" + outFilePrenameAna + '_' + a[len(a)-1]).replace('\n','') 
+    if doLHE_HT_cut and ds.find(dyNameTmp) != -1:
+      outnamepre = outnamepre + '_lheHTcut' 
+      
     outname = outnamepre + '_' + uncertainty + '_all.root'
     if outname.find('*') != -1:
       outname = outname.replace('*','')
     print outname
     os.system('rm ' + outname) 
-
+    proofLog = outFilePrenameAna + '_' + a[len(a)-1].replace('\n','')
+    
 #run option
-    inputs = dsType + '  ' + runMode + '  ' + infiles + '  ' + outname + '  ' + uncertainty 
+    inputs = dsType + '  ' + runMode + '  ' + infiles + '  ' + outname + '  ' + uncertainty + '  ' + use_lheHTcut + '  ' + proofLog 
     
     com = './main ' + inputs
     
