@@ -21,6 +21,8 @@ const double GeV = 1. ; //already defined in FudgeMCTool
 const Double_t WMass = 80.4*GeV;
 const Double_t PHO_ISOCUT = 4 ; 
 const Double_t MZ = 90.1*GeV ;
+const Double_t JET_PT = 20 ;
+const Double_t HJET_PT = 20 ;
 
 const int NBIN_ETA = 600 ;
 const float MIN_ETA = -3 ;
@@ -102,6 +104,7 @@ namespace Aux {
   int findPtBin(float pTin) ;
   void printBits(unsigned value, TString label) ;
   vector<float> XY(float t, float phi) ;
+  float dRmin(double eta1, double phi1, vector<double> eta2s, vector<double> phi2s, bool doFindDrMax=false) ;
   float ResolutionBias_NOM(float eta) ; 
   float ResolutionBias_UP(float eta) ; 
   float ResolutionBias_DOWN(float eta) ; 
@@ -135,62 +138,183 @@ class Obj {
     bool operator > (const Obj&) const;
     bool SelectElec() ; 
     bool SelectMuon() ; 
-    bool SelectJet() const ;
+    bool SelectLepton(const BaseTree* r) ;
+    bool SelectJet(float ptCut) const ;
     bool SelectMet(float sig, const vector<Obj>& jets, TH1D* hTest, TH1D*, TH1D*) const ; 
-    void Set(TString type, unsigned i, const BaseTree* r, bool doUseAobject=false) ; //type = "ele", "muon", "jet", "met"
+    void Set(TString type, unsigned i, const BaseTree* r, bool doUseVobject=false) ; //type = "ele", "muon", "jet", "met"
     //bool SelectElec(BaseTree* r) ;
     //bool SelectMuon(BaseTree* r) ;
     bool SelectGenLep(BaseTree* r) ;
     //bool SelectJet(BaseTree* r) const ;
     bool SelectGenJet(BaseTree* r) ;
     bool SelectMet(BaseTree* r) ;
-    bool SelectTagJet(BaseTree* r, double csv_cut, bool doUseAobject=false) const ;
+    bool SelectTagJet(const BaseTree* r, double ptCut, double csv_cut=0, bool invert_csvCut = false, bool gtZero_csv = false) ;
+    bool SelectBoostedHjet(const BaseTree* r, double ptCut, double csv_cut=0, bool invert_csvCut=false, bool gtZero_csv = false) ;
+    bool SubJetTag(Obj jet1, Obj jet2) ;
     void ApplyJECshift(BaseTree* r, TString uncType, bool doUseAobject=false) ;
     void ApplyJER(BaseTree* r, TString uncType, bool doUseAobject=false) ;
-} ;
-
-class TagJet: public Obj { //currently don't use
- public:
-   double m_csv ; 
-   double m_vtxMass ; 
-   virtual ~TagJet() {} ;
-   TagJet() {} ;
-   void Set(unsigned i, BaseTree* r) ; //type = "tagjet"
-   bool SelectTagJet(BaseTree* r, double csv_cut) ;
-   
 } ;
 
 //==contain histogram with basic information of objects==
 class HistObj {
 public:
-	TH1D* pt ;
+	TString m_type ; //jet1, jet2, ele1, ele2, muon1, muon2 ...
+  TH1D* pt ;
 	TH1D* eta ;
 	TH1D* phi ;
 
-	HistObj() {} ;
+	HistObj() {m_type = "unknown" ; } ;
+	HistObj(TString type) : m_type(type) {} ;
 	virtual ~HistObj() {} ;
-	void Book(TString type, TString regionName) ;
-  void Fill(BaseTree* r, const Obj& objIn, double w=1.) ;
+	void Book(TString regionName) ;
+  void Fill(const BaseTree* r, const Obj& objIn, double w=1.) ;
   void Write() ;
 } ;
 
-//==contain histogram of Z candidate==
+class HistJet : public HistObj {
+  public:
+    TH1D* csv ;
+    
+    HistJet() {} ;
+    HistJet(TString type) : HistObj(type) {} ;
+	  virtual ~HistJet() {} ;
+    void Book(TString regionName) ;
+    void Fill(const BaseTree* r, const Obj& objIn, double w=1.) ;
+    void Write() {} ; 
+} ;
+
+//class HistBoostedJet : public HistObj {
+  //public:
+    //TH1D* csv ;
+    
+    //HistBoostedJet() {} ;
+    //HistBoostedJet(TString type) : HistObj(type) {} ;
+	  //virtual ~HistBoostedJet() {} ;
+    //void Book(TString regionName) ;
+    //void Fill(const BaseTree* r, const Obj& objIn, double w=1.) ;
+    //void Write() ;
+//} ;
+
+
+//==Contain histograms of Z==========================
 class HistZ {
   public:
-  TH1D* lep_pt[2] ;
-  TH1D* lep_eta[2] ;
-  TH1D* lep_phi[2] ;
-  TH1D* Zmass ;
+    TString m_type ;
+    HistObj m_l1 ;
+    HistObj m_l2 ; 
+    TH1D* vpt ;
+    TH1D* vpt_Hmass_cut ;
 
-  HistZ() {} ;
-  virtual ~HistZ() {} ;
-  void Book(TString regionName) ;
-  void Fill(BaseTree* r, const vector<Obj>& leps, double w=1.) ;
-  void Write() ;
+    HistZ() {} ;
 
+    void set(TString type) { //Zee or Zmm
+
+      m_type = type ;
+      if (m_type == "Zee") {
+        m_l1.m_type = "ele1" ;
+        m_l2.m_type = "ele2" ;
+      }
+      if (m_type == "Zmm") {
+        m_l1.m_type = "muon1" ;
+        m_l2.m_type = "muon2" ;
+      } 
+
+    } ;
+    
+    virtual ~HistZ() {} ;
+    void Book(TString regionName) ;
+    void Fill(const BaseTree* r, const Obj& lep1, const Obj& lep2, double w=1.) ;
+    void Write() ;
 } ;
 
-//==contain histogram of final state of Z+b-tagged jets
+class HistH {
+  public:
+    HistJet m_j1 ;
+    HistJet m_j2 ;
+    TH1D* hcsv_mass ;
+    TH1D* hcsv_reg_mass ;
+    TH1D* h_mass ;
+    TH1D* h_reg_mass ;
+
+    HistH() {} ;
+
+    void set() {m_j1.m_type = "jet1" ; m_j2.m_type = "jet2" ;} ; 
+
+    virtual ~HistH() {} ;
+    void Book(TString regionName) ;
+    void Fill(const BaseTree* r, const Obj& jet1, const Obj& jet2, double w=1.) ;
+    void Write() ;
+} ;
+
+class HistVH {
+  public:
+    TString m_type ; //ZeeH, ZmmH, WH
+    HistZ m_Z ;
+    HistH m_H ;
+
+    HistVH() {} ;
+    void set(TString type) { //type = ZeeH or ZmmH
+      m_type = type ;
+      if (type.Contains("ZeeH")) m_Z.set("Zee") ;
+      if (type.Contains("ZmmH")) m_Z.set("Zmm") ;
+      m_H.set() ;
+    } ; 
+    virtual ~HistVH() {} ;
+    void Book(TString regionName) ;
+    void Fill(const BaseTree* r, const Obj& lep1, const Obj& lep2, const Obj& jet1, const Obj& jet2, double w=1.) ;
+    void Write() ;
+} ;
+
+class HistBoostedH {
+  public:
+    HistJet m_fatJet ;
+    HistJet m_j1 ; //subjets
+    HistJet m_j2 ;
+    HistJet m_j3 ;
+    TString m_type ;
+    TH1D* h_mass ;
+
+    HistBoostedH() {} ;
+
+    void set(TString type) {m_type = type ; m_fatJet.m_type = "fatJet_" + type ; m_j1.m_type = "jet1_" + type ; m_j2.m_type = "jet2_" + type ; m_j3.m_type = "jet3_" + type ; } ; 
+
+    virtual ~HistBoostedH() {} ;
+    void Book(TString regionName) ;
+    void Fill(const BaseTree* r, const Obj& fatJet, const vector<Obj>& jets, double w=1.) ;
+    void Write() {} ;
+} ;
+
+class HistVBoostedH {
+  public:
+    TString m_type ; //ZeeBoostedH_subjetCA15pruned, ZmmBoostedH_subjetCA15pruned, WH
+    HistZ m_Z ;
+    HistBoostedH m_H ;
+
+    HistVBoostedH() {} ;
+    void set(TString type) { //type = ZeeBoostedH_subjetCA15pruned or ZmmBoostedH_subjetCA15pruned
+      m_type = type ;
+      if (type.Contains("ZeeBoostedH")) m_Z.set("Zee") ;
+      else if (type.Contains("ZmmBoostedH")) m_Z.set("Zmm") ;
+      else {
+        cout << "\n Warning: unknown Z type in HistVBoostedH class" ;
+        m_Z.set("unknown") ;
+      }
+      
+      if (type.Contains("subjetCA15pruned")) m_H.set("subjetCA15pruned") ;
+      else {
+        cout << "\n Warning: unknown H type in HistVBoostedH class" ;
+        m_H.set("unknown") ;
+      }
+
+    } ; 
+    virtual ~HistVBoostedH() {} ;
+    void Book(TString regionName) ;
+    void Fill(const BaseTree* r, const Obj& lep1, const Obj& lep2, const Obj& fatJet, const vector<Obj>& jets, double w=1.) ;
+    void Write() {} ;
+} ;
+
+
+//==contain histograms for BDT=======================
 class HistBasic { //===TODO add Njet distribution and 
 public:
 	TH1D* lep_pt[2] ;
@@ -216,52 +340,5 @@ public:
   void Write() ;
 } ;
 
-class HistTaggedJet { //histogram of tagged jets
-  public:
-    TH1D* jet1_pt[5] ; //0: all, 1: from light jet, 2: from b-jet, 3: from c-jet, 4: other jets
-    TH1D* jet1_eta[5] ;
-    TH1D* jet1_phi[5] ;
-    TH1D* jet1_csv[5] ;
-    TH1D* jet1_vtxMass[5] ;
-    TH1D* jet1_tche[5] ;
-    TH1D* jet1_tchp[5] ;
-    TH1D* jet1_pt_bjet_weighted ; //for testing vtx mass with weighted jet pt in ttbar events
-    TH1D* jet1_vtxMass_bjet_weighted ; //for testing vtx mass with weighted jet pt in ttbar events
-
-    HistTaggedJet() {} ;
-    virtual ~HistTaggedJet () {} ;
-    void Book(TString regionName) ;
-    void Fill(BaseTree* r, const Obj& taggedJet, double w=1.) ;
-    void Write() ;
-} ;
-
-//==contain histogram of efficiency study===
-class HistEff { 
-public:
-	TH1D* jet_pt[4] ; //0: is for c-jet, 1: is for b-jet, 2: is for tagged jet from c, 3: is for tagged jet from b (numerator) 
-	TH1D* jet_eta[4] ;
-	TH1D* jet_phi[4] ;
-
-	HistEff() {} ;
-	virtual ~HistEff () {} ;
-	void Book(TString regionName) ;
-  void Fill(BaseTree* r, const vector<Obj>& jets, float CSVcut, double w=1.) ;
-  void Write() ;
-} ;
-
-class HistBasicJet { //histogram of tagged jets
-  public:
-    TH1D* jet_pt[4] ; //0: all, 1: from light jet, 2: from b-jet, 3: from c-jets
-    TH1D* jet_eta[4] ;
-    TH1D* jet_vtxMass[4] ;
-    TH1D* jet_csv[4] ;
-    TH1D* jet_jp[4] ;
-
-    HistBasicJet() {} ;
-    virtual ~HistBasicJet () {} ;
-    void Book(TString regionName) ;
-    void Fill(BaseTree* r, int jetInd, double w=1.) ;
-    void Write() ;
-} ;
 
 #endif

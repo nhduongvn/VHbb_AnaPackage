@@ -23,13 +23,13 @@ class AnaConf: public TNamed
 public:
   AnaConf(const char * name = "None"):
     TNamed(name,""),
-    m_IsData(false) 
+    m_IsData(false)
   {
   }
 
   virtual ~AnaConf(){}
 
-  void setIsData(bool isData) { m_IsData = isData;}
+  void setIsData(bool isData) { m_IsData = isData ;}
   
   const std::string SelectionName() const { return std::string(this->GetName()); }
   bool IsData() const { return m_IsData; }
@@ -38,7 +38,7 @@ public:
   ClassDef(AnaConf,1)
 
 private:
-  bool m_IsData;
+  bool m_IsData ;
 
 };
 

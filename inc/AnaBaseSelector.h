@@ -17,12 +17,20 @@ class TList;
   a TSelector.
 */
 
+using namespace std ;
 
 class AnaBaseSelector
 {
 public:
-  AnaBaseSelector(): m_IsData(false) {};
-  virtual ~AnaBaseSelector() {};
+
+  AnaBaseSelector(): m_IsData(false), m_region("unknown"), m_wei(1) {} ;
+  AnaBaseSelector(string region, bool isData, double wei) {
+    m_region = region ;
+    m_IsData = isData ;
+    m_wei = wei ;
+  } 
+  
+  virtual ~AnaBaseSelector() {}
 
   // These methods are called at the corresponding stage of processing of TSelector
   virtual void SlaveBegin(const BaseTree* r);
@@ -30,14 +38,19 @@ public:
   virtual void SlaveTerminate(const BaseTree* r);
   virtual void Terminate(TList* mergedList);
   
-  void setIsData(bool isData) { m_IsData = isData;}
-  
-  bool getIsData() { return(m_IsData);}
+  void setIsData(bool isData) { m_IsData = isData; } 
+  void setWei(float wei) { m_wei = wei ; }
+  void setRegion(string region) { m_region = region ; }
+ 
+  bool getIsData() { return(m_IsData); } 
 
 
 protected:
   bool m_IsData;
+  string m_region;
+  double m_wei ;
 
 };
+
 #endif
 

@@ -7,6 +7,9 @@
 #include "TProofOutputFile.h"
 #include "inc/AnaConf.h"
 #include "inc/SR.h"
+#include "inc/CR_ZLF.h"
+#include "inc/CR_ZHF.h"
+#include "inc/CR_TT.h"
 #include <vector>
 
 /*
@@ -32,6 +35,8 @@ public:
   
 
   void addSelection(AnaBaseSelector* sel) { m_selections.push_back(sel); }
+  void set_LHE_HTcut(float lheHTcut) {m_lheHTcut = lheHTcut ; }
+
   //bool m_doRunProof ;
   string m_outputfilename ;
   //string m_dataType ;
@@ -42,6 +47,11 @@ private:
   std::vector<AnaBaseSelector*> m_selections ;
   TProofOutputFile *m_fProofFile ;
   TFile* m_fFile ;
+  TH1D* hProcessedEvent ;
+  TH1D* hGenWeight ;
+  TH1D* h_lheHT ;
+
+  float m_lheHTcut ;
 };
 
 #endif
