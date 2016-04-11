@@ -4,14 +4,14 @@
 //==function and method of Object=====
 //
 //====constructor=======
-void Obj::Set(TString type, unsigned i, const BaseTree* r, bool doUseAobject) {
+void Obj::Set(TString type, unsigned i, const BaseTree* r, bool doUseVobject) {
   m_softLep_type = 0 ;
   if (type == "") cout << "\n Warning: you set no type!!!" ;
   if (type == "ele") {
     m_ind = i ;
     m_type = "ele" ;
     m_e = -1 ; //TODO: need to calculate electron energy
-    if (!doUseAobject) {
+    if (!doUseVobject) {
     m_pt = (r->selLeptons_pt)[i] ;
     m_eta = (r->selLeptons_eta)[i] ;
     m_phi = (r->selLeptons_phi)[i] ;
@@ -31,7 +31,7 @@ void Obj::Set(TString type, unsigned i, const BaseTree* r, bool doUseAobject) {
     m_ind = i ;
     m_type = "muon" ;
     m_e = -1 ; //TODO: need to calculate muon energy
-    if (!doUseAobject) {
+    if (!doUseVobject) {
     m_pt = (r->selLeptons_pt)[i] ;
     m_eta = (r->selLeptons_eta)[i] ;
     m_phi = (r->selLeptons_phi)[i] ;
@@ -48,49 +48,47 @@ void Obj::Set(TString type, unsigned i, const BaseTree* r, bool doUseAobject) {
   }
 
 
-  if (type == "jet") {
+  if (type == "jet" || type == "hjet") {
     m_ind = i ;
-    m_type = "jet" ;
-    if (!doUseAobject) {
+    m_type = type ;
     m_e = -1 ; 
     m_pt = (r->Jet_pt)[i] ;
     m_eta = (r->Jet_eta)[i] ;
     m_phi = (r->Jet_phi)[i] ;
-    //====TEMP==turn off to run on old files====
-#ifdef MCFILE
-    //m_e = (r->Jet_e_withJEC)[i] ;
-    //m_pt = (r->Jet_pt_withJEC)[i] ;
-    //m_eta = (r->Jet_eta_withJEC)[i] ;
-    //m_phi = (r->Jet_phi_withJEC)[i] ;
-#endif
-    }
-    else {
-    m_e = -1 ; 
-    m_pt = (r->Jet_pt)[i] ;
-    m_eta = (r->Jet_eta)[i] ;
-    m_phi = (r->Jet_phi)[i] ;
-    //====TEMP==turn off to run on old files====
-#ifdef MCFILE
-    //m_e = (r->Jet_e_withJEC)[i] ;
-    //m_pt = (r->Jet_pt_withJEC)[i] ;
-    //m_eta = (r->Jet_eta_withJEC)[i] ;
-    //m_phi = (r->Jet_phi_withJEC)[i] ;
-#endif
-    }
-
-   
-    m_mass = -1 ; //TODO: need to calculate jet mass 
+    m_mass = (r->Jet_mass)[i] ; //TODO: need to calculate jet mass 
     m_charge = -100 ;
   }
+
+  if (type == "SubjetCA15pruned") {
+    m_ind = i ;
+    m_type = type ;
+    m_e = -1 ; 
+    m_pt = (r->SubjetCA15pruned_pt)[i] ;
+    m_eta = (r->SubjetCA15pruned_eta)[i] ;
+    m_phi = (r->SubjetCA15pruned_phi)[i] ;
+    m_mass = (r->SubjetCA15pruned_mass)[i] ; //TODO: need to calculate jet mass 
+    m_charge = -100 ;
+  }
+  
+  if (type == "FatjetCA15pruned") {
+    m_ind = i ;
+    m_type = type ;
+    m_e = -1 ; 
+    m_pt = (r->FatjetCA15pruned_pt)[i] ;
+    m_eta = (r->FatjetCA15pruned_eta)[i] ;
+    m_phi = (r->FatjetCA15pruned_phi)[i] ;
+    m_mass = (r->FatjetCA15pruned_mass)[i] ; //TODO: need to calculate jet mass 
+    m_charge = -100 ;
+  }
+
 
   if (type == "met") {
     m_ind = i ;
     m_type = "met" ;
     m_e = -1 ;
-    if (!doUseAobject) m_pt = (r->met_pt) ;
-    else m_pt = (r->met_pt) ;
+    m_pt = (r->met_pt) ;
     m_eta = -10 ; 
-    m_phi = -10 ;
+    m_phi = (r->met_phi) ;
     m_mass = -1 ;
     m_charge = -100 ;
   }
@@ -158,6 +156,16 @@ bool Obj::SelectMuon() {
   return false ;
 }
 
+bool Obj::SelectLepton(const BaseTree* r) {
+  if (m_pt > 20 && fabs(m_eta) < 2.4) {
+    if ((r->vLeptons_relIso04)[m_ind] < 0.25) {
+      return true ;
+    }
+  }
+  return false ;
+}
+
+
 bool Obj::SelectGenLep(BaseTree* r) {
   if (fabs(m_eta) > 2.4) return false ;
   if (m_pt < 20) return false ;
@@ -166,9 +174,9 @@ bool Obj::SelectGenLep(BaseTree* r) {
 
 
 //====Jet selection===============
-bool Obj::SelectJet() const {
+bool Obj::SelectJet(float ptCut) const {
   if (fabs(m_eta) < 2.4) {
-    if (m_pt > 30) {
+    if (m_pt > ptCut) {
       return true ;      
     }
   }
@@ -207,21 +215,29 @@ bool Obj::SelectMet(float sig, const vector<Obj>& jets, TH1D* hTest, TH1D* hTest
 }
 
 
-bool Obj::SelectTagJet(BaseTree* r, double csv_cut, bool doUseAobject) const {
-  bool passJet = SelectJet() ;
-  bool passCsvCut = false ;
-  bool passVtxMassCut = false ; 
-  if (!doUseAobject) {
-    passCsvCut = ((r->Jet_btagCSV)[m_ind] > csv_cut) ;
-    passVtxMassCut = ((r->Jet_vtxMass)[m_ind] > 0) ;
-  }
-  else {
-    passCsvCut = ((r->Jet_btagCSV)[m_ind] > csv_cut) ;
-    passVtxMassCut = ((r->Jet_vtxMass)[m_ind] > 0) ;
-  } 
-  if (passJet && passCsvCut && passVtxMassCut) return true ;
+bool Obj::SelectTagJet(const BaseTree* r, double ptCut, double csv_cut, bool invert_csvCut, bool gtZero_csv) {
+  bool passJet = SelectJet(ptCut) ;
+  bool passCsvCut = invert_csvCut ? ((r->Jet_btagCSV)[m_ind] < csv_cut) : ((r->Jet_btagCSV)[m_ind] > csv_cut);
+  passCsvCut = gtZero_csv ? (passCsvCut && (r->Jet_btagCSV)[m_ind] > 0) : passCsvCut ;
+  if (passJet && passCsvCut) return true ;
   return false ;
 }
+
+bool Obj::SelectBoostedHjet(const BaseTree* r, double ptCut, double csv_cut, bool invert_csvCut, bool gtZero_csv) {
+  bool passJet = SelectJet(ptCut) ;
+  bool passCsvCut = invert_csvCut ? ((r->SubjetCA15pruned_btag)[m_ind] < csv_cut) : ((r->SubjetCA15pruned_btag)[m_ind] > csv_cut);
+  passCsvCut = gtZero_csv ? (passCsvCut && (r->SubjetCA15pruned_btag)[m_ind] > 0) : passCsvCut ;
+  if (passJet && passCsvCut) return true ;
+  return false ;
+}
+
+bool Obj::SubJetTag(Obj jet1, Obj jet2) {
+  bool passTag1 = TMath::Max(jet1.m_mass, jet2.m_mass) < 0.67*m_mass ? true : false ;
+  float dRtmp = Aux::DeltaR(jet1.m_eta, jet1.m_phi, jet2.m_eta, jet2.m_phi) ;
+  bool passTag2 = (TMath::Min(jet1.m_pt*jet1.m_pt, jet2.m_pt*jet2.m_pt)/(m_mass*m_mass))*dRtmp*dRtmp > 0.09 ? true : false ;
+  return passTag1 && passTag2 ;
+}
+
 
 void Obj::ApplyJECshift(BaseTree* r, TString uncType, bool doUseAobject) {
   /*
@@ -265,36 +281,24 @@ void Obj::ApplyJER(BaseTree* r, TString uncType, bool doUseAobject) {
   */
 }
 
-//==For tag jet====
-void TagJet::Set(unsigned i, BaseTree* r) {
-  Obj::Set("jet", i, r) ;
-  m_type = "tagjet" ;
-  m_csv = (r->Jet_btagCSV)[i] ;
-  m_vtxMass = (r->Jet_vtxMass)[i] ;
-}
-
-bool TagJet::SelectTagJet(BaseTree* r, double csv_cut) {
-  bool passJetSel = Obj::SelectJet() ;
-  if (passJetSel && (m_csv > csv_cut)) return true ;
-  return false ;
-}
-
+//===BOOK histogram=====================
 //===function and method of HistObj=====
-void HistObj::Book(TString type, TString regionName) {
+//======================================
+void HistObj::Book(TString regionName) {
   
-  TString nameTmp = type + "_pt_" + regionName ;
+  TString nameTmp = m_type + "_pt_" + regionName ;
   pt = new TH1D(nameTmp, "", GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
   pt->Sumw2() ;
-  nameTmp = type + "_eta_" + regionName ;
+  nameTmp = m_type + "_eta_" + regionName ;
   eta = new TH1D(nameTmp, "", GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
   eta->Sumw2() ;
-  nameTmp = type + "_phi_" + regionName ;
+  nameTmp = m_type + "_phi_" + regionName ;
   phi = new TH1D(nameTmp, "", GLOBC::NBIN_PHI, GLOBC::MIN_PHI, GLOBC::MAX_PHI) ;
   phi->Sumw2() ;
 
 }
 
-void HistObj::Fill(BaseTree* r, const Obj& objIn, double w) {
+void HistObj::Fill(const BaseTree* r, const Obj& objIn, double w) {
   pt->Fill(objIn.m_pt,w) ;
   eta->Fill(objIn.m_eta,w) ;
   phi->Fill(objIn.m_phi,w) ;
@@ -306,55 +310,119 @@ void HistObj::Write() {
   phi->Write() ;
 }
 
-//==function and method of HisZ==========
+//==function and method of HistJet=======
+void HistJet::Book(TString regionName) {
+  HistObj::Book(regionName) ;
+  TString strTmp = m_type + "_csv_" + regionName ;
+  csv = new TH1D(strTmp, "", GLOBC::NBIN_CSV, GLOBC::MIN_CSV, GLOBC::MAX_CSV) ;
+  csv->Sumw2() ;
+}
+
+void HistJet::Fill(const BaseTree* r, const Obj& objIn, double w) {
+  HistObj::Fill(r, objIn, w) ;
+  csv->Fill((r->Jet_btagCSV)[objIn.m_ind], w) ;
+}
+
+//void HistJet::Write() {
+  //HistObj::Write() ;
+  //csv->Write() ;
+//}
+
+//==function and method of HistZ==
 void HistZ::Book(TString regionName) {
-  
-  TString nameTmp = "Lep1_z_pt_" + regionName ;
-  lep_pt[0] = new TH1D(nameTmp, "", GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  lep_pt[0]->Sumw2() ;
-  nameTmp = "Lep1_z_eta_" + regionName ;
-  lep_eta[0] = new TH1D(nameTmp, "", GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-  lep_eta[0]->Sumw2() ;
-  nameTmp = "Lep1_z_phi_" + regionName ;
-  lep_phi[0] = new TH1D(nameTmp, "", GLOBC::NBIN_PHI, GLOBC::MIN_PHI, GLOBC::MAX_PHI) ;
-  lep_phi[0]->Sumw2() ;
-  
-  nameTmp = "Lep2_z_pt_" + regionName ;
-  lep_pt[1] = new TH1D(nameTmp, "", GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  lep_pt[1]->Sumw2() ;
-  nameTmp = "Lep2_z_eta_" + regionName ;
-  lep_eta[1] = new TH1D(nameTmp, "", GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-  lep_eta[1]->Sumw2() ;
-  nameTmp = "Lep2_z_phi_" + regionName ;
-  lep_phi[1] = new TH1D(nameTmp, "", GLOBC::NBIN_PHI, GLOBC::MIN_PHI, GLOBC::MAX_PHI) ;
-  lep_phi[1]->Sumw2() ;
-
-  nameTmp = "Zmass_z_" + regionName ;
-  Zmass = new TH1D(nameTmp, "", GLOBC::NBIN_MASS, 0, GLOBC::MAX_MASS) ;
-  Zmass->Sumw2() ;
-
+  m_l1.Book(m_type + "_" + regionName) ;
+  m_l2.Book(m_type + "_" + regionName) ;
+  vpt = new TH1D("Vpt_" + regionName, "", GLOBC::NBIN_MASS, 0, GLOBC::MAX_MASS) ;
+  vpt_Hmass_cut = new TH1D("Vpt_Hmass_cut_" + regionName, "", GLOBC::NBIN_MASS, 0, GLOBC::MAX_MASS) ;
 }
 
-void HistZ::Fill(BaseTree* r, const vector<Obj>& leps, double w) {
-  for (int i = 0; i < 2 ; i++) {
-     lep_pt[i]->Fill(leps[i].m_pt, w) ;
-     lep_eta[i]->Fill(leps[i].m_eta, w) ;
-     lep_phi[i]->Fill(leps[i].m_phi, w) ;
-  }
-  double ZmassVal = Aux::Mass2(leps[0].m_mass, leps[0].m_pt, leps[0].m_eta, leps[0].m_phi, leps[1].m_mass, leps[1].m_pt, leps[1].m_eta, leps[1].m_phi, true) ;
-  Zmass->Fill(ZmassVal, w) ;
-
+void HistZ::Fill(const BaseTree* r, const Obj& lep1, const Obj& lep2, double w) {
+  m_l1.Fill(r, lep1, w) ;
+  m_l2.Fill(r, lep2, w) ;
+  vpt->Fill(r->V_pt, w) ;
+  if (r->HCSV_reg_mass < 150 && r->HCSV_reg_mass > 90) vpt_Hmass_cut->Fill(r->V_pt, w) ;
 }
-
 
 void HistZ::Write() {
-  for (int i = 0; i < 2; i++) {
-    lep_pt[i]->Write() ;
-    lep_eta[i]->Write() ;
-    lep_phi[i]->Write() ;  	
-  }
-  Zmass->Write() ;
+  m_l1.Write() ;
+  m_l2.Write() ;
 }
+
+void HistH::Book(TString regionName) {
+  m_j1.Book("H_" + regionName) ;
+  m_j2.Book("H_" + regionName) ;
+  hcsv_mass = new TH1D("HCSV_mass_" + regionName, "", GLOBC::NBIN_MASS, 0, GLOBC::MAX_MASS) ;
+  hcsv_reg_mass = new TH1D("HCSV_reg_mass_" + regionName, "", GLOBC::NBIN_MASS, 0, GLOBC::MAX_MASS) ;
+  h_mass = new TH1D("H_mass_" + regionName, "", GLOBC::NBIN_MASS, 0, GLOBC::MAX_MASS) ;
+  h_reg_mass = new TH1D("H_reg_mass_" + regionName, "", GLOBC::NBIN_MASS, 0, GLOBC::MAX_MASS) ;
+}
+
+void HistH::Fill(const BaseTree* r, const Obj& jet1, const Obj& jet2, double w) {
+  m_j1.Fill(r, jet1, w) ;
+  m_j2.Fill(r, jet2, w) ;
+  hcsv_mass->Fill(r->HCSV_mass, w) ;
+  hcsv_reg_mass->Fill(r->HCSV_reg_mass, w) ;
+  h_mass->Fill(r->H_mass, w) ;
+  h_reg_mass->Fill(r->H_reg_mass, w) ;
+}
+
+void HistH::Write() {
+  m_j1.Write() ;
+  m_j2.Write() ;
+}
+
+//=====BoostedH=====
+void HistBoostedH::Book(TString regionName) {
+  m_fatJet.Book("BoostedH_" + m_type + "_" + regionName) ;
+  m_j1.Book("BoostedH_" + m_type + "_" + regionName) ;
+  m_j2.Book("BoostedH_" + m_type + "_" + regionName) ;
+  m_j3.Book("BoostedH_" + m_type + "_" + regionName) ;
+  h_mass = new TH1D("BoostedH_mass_" + m_type + "_" + regionName, "", GLOBC::NBIN_MASS, 0, GLOBC::MAX_MASS) ;
+}
+
+void HistBoostedH::Fill(const BaseTree* r, const Obj& fatJet, const vector<Obj>& jets, double w) {
+  m_fatJet.Fill(r, fatJet, w) ;
+  if (jets.size() >=1) m_j1.Fill(r, jets[0], w) ;
+  if (jets.size() >=2) m_j2.Fill(r, jets[1], w) ;
+  if (jets.size() >=3) m_j3.Fill(r, jets[2], w) ;
+  
+  //===reconstruct from 3 leading jets===
+  float mass = -1 ;
+  if (jets.size() == 2) {
+    mass = Aux::Mass2(jets[0].m_mass, jets[0].m_pt, jets[0].m_eta, jets[0].m_phi, jets[1].m_mass, jets[1].m_pt, jets[1].m_eta, jets[1].m_phi, true) ;   
+  }
+  if (jets.size() >= 3) {
+    mass = Aux::Mass3(jets[0].m_mass, jets[0].m_pt, jets[0].m_eta, jets[0].m_phi, jets[1].m_mass, jets[1].m_pt, jets[1].m_eta, jets[1].m_phi, jets[2].m_mass, jets[2].m_pt, jets[2].m_eta, jets[2].m_phi, true) ;
+  }
+  h_mass->Fill(mass, w) ;
+}
+
+
+void HistVH::Book(TString regionName) {
+  m_Z.Book(m_type + "_" + regionName) ;
+  m_H.Book(m_type + "_" + regionName) ;
+}
+
+void HistVH::Fill(const BaseTree* r, const Obj& lep1, const Obj& lep2, const Obj& jet1, const Obj& jet2, double w) {
+  m_Z.Fill(r, lep1, lep2, w) ;
+  m_H.Fill(r, jet1, jet2, w) ;
+}
+
+void HistVH::Write() {
+  m_Z.Write() ;
+  m_H.Write() ;
+}
+
+void HistVBoostedH::Book(TString regionName) {
+  m_Z.Book(m_type + "_" + regionName) ;
+  m_H.Book(m_type + "_" + regionName) ;
+}
+
+void HistVBoostedH::Fill(const BaseTree* r, const Obj& lep1, const Obj& lep2, const Obj& fatJet, const vector<Obj>& jets, double w) {
+  m_Z.Fill(r, lep1, lep2, w) ;
+  m_H.Fill(r, fatJet, jets, w) ;
+}
+
 
 //==function and method of HistBasic=====
 void HistBasic::Book(TString regionName) {
@@ -584,416 +652,6 @@ void HistBasic::Write() {
   }
 }
 
-//===Function of HistEff===
-void HistEff::Book(TString regionName) {
-  TString nameTmp = "eff_cjet_pt_" + regionName ;
-  jet_pt[0] = new TH1D(nameTmp, nameTmp, GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  nameTmp = "eff_bjet_pt_" + regionName ;
-  jet_pt[1] = new TH1D(nameTmp, nameTmp, GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  nameTmp = "eff_tagJet_cjet_pt_" + regionName ;
-  jet_pt[2] = new TH1D(nameTmp, nameTmp, GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  nameTmp = "eff_tagJet_bjet_pt_" + regionName ;
-  jet_pt[3] = new TH1D(nameTmp, nameTmp, GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  
-  nameTmp = "eff_cjet_eta_" + regionName ;
-  jet_eta[0] = new TH1D(nameTmp, nameTmp, GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-  nameTmp = "eff_bjet_eta_" + regionName ;
-  jet_eta[1] = new TH1D(nameTmp, nameTmp, GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-  nameTmp = "eff_tagJet_cjet_eta_" + regionName ;
-  jet_eta[2] = new TH1D(nameTmp, nameTmp, GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-  nameTmp = "eff_tagJet_bjet_eta_" + regionName ;
-  jet_eta[3] = new TH1D(nameTmp, nameTmp, GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-   
-  nameTmp = "eff_cjet_phi_" + regionName ;
-  jet_phi[0] = new TH1D(nameTmp, nameTmp, GLOBC::NBIN_PHI, GLOBC::MIN_PHI, GLOBC::MAX_PHI) ;
-  nameTmp = "eff_bjet_phi_" + regionName ;
-  jet_phi[1] = new TH1D(nameTmp, nameTmp, GLOBC::NBIN_PHI, GLOBC::MIN_PHI, GLOBC::MAX_PHI) ;
-  nameTmp = "eff_tagJet_cjet_phi_" + regionName ;
-  jet_phi[2] = new TH1D(nameTmp, nameTmp, GLOBC::NBIN_PHI, GLOBC::MIN_PHI, GLOBC::MAX_PHI) ;
-  nameTmp = "eff_tagJet_bjet_phi_" + regionName ;
-  jet_phi[3] = new TH1D(nameTmp, nameTmp, GLOBC::NBIN_PHI, GLOBC::MIN_PHI, GLOBC::MAX_PHI) ;
-  for (int i = 0; i < 4; i++) {
-  	jet_pt[i]->Sumw2() ;
-        jet_eta[i]->Sumw2() ;
-        jet_phi[i]->Sumw2() ;
-  }
-}
-
-void HistEff::Fill(BaseTree* r, const vector<Obj>& jets, float CSVcut, double w) {
-  //==use the fist b or c flavour jet found==
-  for (unsigned iJet = 0 ; iJet < jets.size() ; ++iJet) {//==TODO move declaration outside of loop
-  int jetInd = jets[iJet].m_ind ;
-  //int jetType = (r->Jet_flavour)[jetInd] ;
-  int jetType = 1 ; 
-  float jetPt = jets[iJet].m_pt ; 
-  float jetEta = jets[iJet].m_eta ; 
-  float jetPhi = jets[iJet].m_phi ; 
-  float jetCSV = (r->Jet_btagCSV)[jetInd] ;
-  bool doFoundBorC(false) ;
-  switch (abs(jetType)) {
-    case 4: //c-jet
-      jet_pt[0]->Fill(jetPt, w) ;
-      jet_eta[0]->Fill(jetEta, w) ;
-      jet_phi[0]->Fill(jetPhi, w) ;
-      if (jetCSV > CSVcut) {
-        jet_pt[2]->Fill(jetPt, w) ;
-        jet_eta[2]->Fill(jetEta, w) ;
-        jet_phi[2]->Fill(jetPhi, w) ;
-      }
-      doFoundBorC = true ;
-      break ;
-    case 5: //b-jet
-      jet_pt[1]->Fill(jetPt, w) ;
-      jet_eta[1]->Fill(jetEta, w) ;
-      jet_phi[1]->Fill(jetPhi, w) ;
-      if (jetCSV > CSVcut) {
-        jet_pt[3]->Fill(jetPt, w) ;
-        jet_eta[3]->Fill(jetEta, w) ;
-        jet_phi[3]->Fill(jetPhi, w) ;
-      }
-      doFoundBorC = true ;
-      break ;
-    default:
-      break ; 
-  } //end switch
-  if (doFoundBorC) break ;
-  } //end loop over jets
-}
-
-void HistEff::Write() {
-  for (int i = 0; i < 4; i++) {
-  	jet_pt[i]->Write() ;
-  	jet_eta[i]->Write() ;
-  	jet_phi[i]->Write() ;
-  }
-}
-
-//======functions of tagged jets================
-void HistTaggedJet::Book(TString regionName) {
-  TString nameTmp = "jetTagged_pt_all_" + regionName ;
-  jet1_pt[0]= new TH1D(nameTmp, "", GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  jet1_pt[0]->Sumw2() ; 
-  nameTmp = "jetTagged_eta_all_" + regionName ;
-  jet1_eta[0]= new TH1D(nameTmp, "", GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-  jet1_eta[0]->Sumw2() ; 
-  nameTmp = "jetTagged_csv_all_" + regionName ;
-  jet1_csv[0]= new TH1D(nameTmp, "", GLOBC::NBIN_CSV, GLOBC::MIN_CSV, GLOBC::MAX_CSV) ;
-  jet1_csv[0]->Sumw2() ;
-  nameTmp = "jetTagged_vtxMass_all_" + regionName ;
-  jet1_vtxMass[0]= new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  jet1_vtxMass[0]->Sumw2() ; 
-  //nameTmp = "jetTagged_vtxMass_negtche_all_" + regionName ;
-  //jet1_vtxMass_negtche[0]= new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  //jet1_vtxMass_negtche[0]->Sumw2() ;
-  nameTmp = "jetTagged_tche_all_" + regionName ;
-  jet1_tche[0]= new TH1D(nameTmp, "", GLOBC::NBIN_TC, -50, GLOBC::MAX_TC) ;
-  jet1_tche[0]->Sumw2() ;
-  nameTmp = "jetTagged_tchp_all_" + regionName ;
-  jet1_tchp[0]= new TH1D(nameTmp, "", GLOBC::NBIN_TC, -50, GLOBC::MAX_TC) ;
-  jet1_tchp[0]->Sumw2() ;
-
-  nameTmp = "jetTagged_pt_ljet_" + regionName ;
-  jet1_pt[1]= new TH1D(nameTmp, "", GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  jet1_pt[1]->Sumw2() ;
-  nameTmp = "jetTagged_eta_ljet_" + regionName ;
-  jet1_eta[1]= new TH1D(nameTmp, "", GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-  jet1_eta[1]->Sumw2() ;
-  nameTmp = "jetTagged_csv_ljet_" + regionName ;
-  jet1_csv[1]= new TH1D(nameTmp, "", GLOBC::NBIN_CSV, GLOBC::MIN_CSV, GLOBC::MAX_CSV) ;
-  jet1_csv[1]->Sumw2() ;
-  nameTmp = "jetTagged_vtxMass_ljet_" + regionName ;
-  jet1_vtxMass[1]= new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  jet1_vtxMass[1]->Sumw2() ;
-  //nameTmp = "jetTagged_vtxMass_negtche_ljet_" + regionName ;
-  //jet1_vtxMass_negtche[1]= new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  //jet1_vtxMass_negtche[1]->Sumw2() ;
-  nameTmp = "jetTagged_tche_ljet_" + regionName ;
-  jet1_tche[1]= new TH1D(nameTmp, "", GLOBC::NBIN_TC, -50, GLOBC::MAX_TC) ;
-  jet1_tche[1]->Sumw2() ; 
-  nameTmp = "jetTagged_tchp_ljet_" + regionName ;
-  jet1_tchp[1]= new TH1D(nameTmp, "", GLOBC::NBIN_TC, -50, GLOBC::MAX_TC) ;
-  jet1_tchp[1]->Sumw2() ;
-
-
-  nameTmp = "jetTagged_pt_bjet_" + regionName ;
-  jet1_pt[2]= new TH1D(nameTmp, "", GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  jet1_pt[2]->Sumw2() ;
-  nameTmp = "jetTagged_pt_bjet_weighted_" + regionName ;
-  jet1_pt_bjet_weighted= new TH1D(nameTmp, "", GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  jet1_pt_bjet_weighted->Sumw2() ;
-  nameTmp = "jetTagged_eta_bjet_" + regionName ;
-  jet1_eta[2]= new TH1D(nameTmp, "", GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-  jet1_eta[2]->Sumw2() ;
-  nameTmp = "jetTagged_csv_bjet_" + regionName ;
-  jet1_csv[2]= new TH1D(nameTmp, "", GLOBC::NBIN_CSV, GLOBC::MIN_CSV, GLOBC::MAX_CSV) ;
-  jet1_csv[2]->Sumw2() ;
-  nameTmp = "jetTagged_vtxMass_bjet_" + regionName ;
-  jet1_vtxMass[2]= new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  jet1_vtxMass[2]->Sumw2() ;
-  nameTmp = "jetTagged_vtxMass_bjet_weighted_" + regionName ;
-  jet1_vtxMass_bjet_weighted = new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  jet1_vtxMass_bjet_weighted->Sumw2() ;
-  
-  //nameTmp = "jetTagged_vtxMass_negtche_bjet_" + regionName ;
-  //jet1_vtxMass_negtche[2]= new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  //jet1_vtxMass_negtche[2]->Sumw2() ;
-  nameTmp = "jetTagged_tche_bjet_" + regionName ;
-  jet1_tche[2]= new TH1D(nameTmp, "", GLOBC::NBIN_TC, -50, GLOBC::MAX_TC) ;
-  jet1_tche[2]->Sumw2() ;
-  nameTmp = "jetTagged_tchp_bjet_" + regionName ;
-  jet1_tchp[2]= new TH1D(nameTmp, "", GLOBC::NBIN_TC, -50, GLOBC::MAX_TC) ;
-  jet1_tchp[2]->Sumw2() ; 
-
-  nameTmp = "jetTagged_pt_cjet_" + regionName ;
-  jet1_pt[3]= new TH1D(nameTmp, "", GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  jet1_pt[3]->Sumw2() ; 
-  nameTmp = "jetTagged_eta_cjet_" + regionName ;
-  jet1_eta[3]= new TH1D(nameTmp, "", GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-  jet1_eta[3]->Sumw2() ; 
-  nameTmp = "jetTagged_csv_cjet_" + regionName ;
-  jet1_csv[3]= new TH1D(nameTmp, "", GLOBC::NBIN_CSV, GLOBC::MIN_CSV, GLOBC::MAX_CSV) ;
-  jet1_csv[3]->Sumw2() ; 
-  nameTmp = "jetTagged_vtxMass_cjet_" + regionName ;
-  jet1_vtxMass[3]= new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  jet1_vtxMass[3]->Sumw2() ;
-  //nameTmp = "jetTagged_vtxMass_negtche_cjet_" + regionName ;
-  //jet1_vtxMass_negtche[3]= new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  //jet1_vtxMass_negtche[3]->Sumw2() ;
-  nameTmp = "jetTagged_tche_cjet_" + regionName ;
-  jet1_tche[3]= new TH1D(nameTmp, "", GLOBC::NBIN_TC, -50, GLOBC::MAX_TC) ;
-  jet1_tche[3]->Sumw2() ;
-  nameTmp = "jetTagged_tchp_cjet_" + regionName ;
-  jet1_tchp[3]= new TH1D(nameTmp, "", GLOBC::NBIN_TC, -50, GLOBC::MAX_TC) ;
-  jet1_tchp[3]->Sumw2() ;
- 
-  nameTmp = "jetTagged_pt_otherJet_" + regionName ;
-  jet1_pt[4]= new TH1D(nameTmp, "", GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  jet1_pt[4]->Sumw2() ;
-  nameTmp = "jetTagged_eta_otherJet_" + regionName ;
-  jet1_eta[4]= new TH1D(nameTmp, "", GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-  jet1_eta[4]->Sumw2() ;
-  nameTmp = "jetTagged_csv_otherJet_" + regionName ;
-  jet1_csv[4]= new TH1D(nameTmp, "", GLOBC::NBIN_CSV, GLOBC::MIN_CSV, GLOBC::MAX_CSV) ;
-  jet1_csv[4]->Sumw2() ;
-  nameTmp = "jetTagged_vtxMass_otherJet_" + regionName ;
-  jet1_vtxMass[4]= new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  jet1_vtxMass[4]->Sumw2() ;
-  //nameTmp = "jetTagged_vtxMass_negtche_otherJet_" + regionName ;
-  //jet1_vtxMass_negtche[4]= new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  //jet1_vtxMass_negtche[4]->Sumw2() ;
-  nameTmp = "jetTagged_tche_otherJet_" + regionName ;
-  jet1_tche[4]= new TH1D(nameTmp, "", GLOBC::NBIN_TC, -50, GLOBC::MAX_TC) ;
-  jet1_tche[4]->Sumw2() ;
-  nameTmp = "jetTagged_tchp_otherJet_" + regionName ;
-  jet1_tchp[4]= new TH1D(nameTmp, "", GLOBC::NBIN_TC, -50, GLOBC::MAX_TC) ;
-  jet1_tchp[4]->Sumw2() ;
-
-}
-
-void HistTaggedJet::Fill(BaseTree* r, const Obj& taggedJet, double w) {
-  int jetInd = taggedJet.m_ind ;
-  //int jetType = (r->Jet_flavour)[taggedJet.m_ind] ; 
-  int jetType = 1 ; 
-  //float jetTche = (r->Jet_tche)[jetInd] ;
-  //float jetTchp = (r->Jet_tchp)[jetInd] ;
-  float jetTche = 1 ; 
-  float jetTchp = 1 ;
-  float jetPt = (r->Jet_pt)[jetInd] ;
-  float jetEta = (r->Jet_eta)[jetInd] ;
-  
-  jet1_pt[0]->Fill(jetPt, w) ;
-  jet1_eta[0]->Fill(jetEta, w) ;
-  jet1_csv[0]->Fill((r->Jet_btagCSV)[jetInd], w) ;
-  jet1_vtxMass[0]->Fill((r->Jet_vtxMass)[jetInd], w) ;
-  //if (jetTche > -50 && jetTche < 0) jet1_vtxMass_negtche[0]->Fill((r->Jet_vtxMass)[jetInd], w) ;
-  jet1_tche[0]->Fill(jetTche, w) ;
-  jet1_tchp[0]->Fill(jetTchp, w) ;
-
-  if (abs(jetType) == 4) { //c-jet
-    jet1_pt[3]->Fill(jetPt, w) ;
-    jet1_eta[3]->Fill(jetEta, w) ;
-    jet1_csv[3]->Fill((r->Jet_btagCSV)[jetInd], w) ;
-    jet1_vtxMass[3]->Fill((r->Jet_vtxMass)[jetInd], w) ;
-    //if (jetTche > -50 && jetTche < 0) jet1_vtxMass_negtche[3]->Fill((r->Jet_vtxMass)[jetInd], w) ;
-    jet1_tche[3]->Fill(jetTche, w) ;
-    jet1_tchp[3]->Fill(jetTchp, w) ;
-  }
-
-   else if (abs(jetType) == 5) { //b-jet
-     jet1_pt[2]->Fill(jetPt, w) ;
-     jet1_pt_bjet_weighted->Fill(jetPt, w*Aux::PtWei(jetPt)) ;
-     jet1_eta[2]->Fill(jetEta, w) ;
-     jet1_csv[2]->Fill((r->Jet_btagCSV)[jetInd], w) ;
-     jet1_vtxMass[2]->Fill((r->Jet_vtxMass)[jetInd], w) ;
-     jet1_vtxMass_bjet_weighted->Fill((r->Jet_vtxMass)[jetInd], w*Aux::PtWei(jetPt)) ;
-     //if (jetTche > -50 && jetTche < 0) jet1_vtxMass_negtche[2]->Fill((r->Jet_vtxMass)[jetInd], w) ;
-     jet1_tche[2]->Fill(jetTche, w) ;
-     jet1_tchp[2]->Fill(jetTchp, w) ;
-
-   }
-   
-   else if ((abs(jetType) < 4 && abs(jetType) !=0) || abs(jetType) == 21) { //light-jet
-     jet1_pt[1]->Fill(jetPt, w) ;
-     jet1_eta[1]->Fill(jetEta, w) ;
-     jet1_csv[1]->Fill((r->Jet_btagCSV)[jetInd], w) ;
-     jet1_vtxMass[1]->Fill((r->Jet_vtxMass)[jetInd], w) ;
-     //if (jetTche > -50 && jetTche < 0) jet1_vtxMass_negtche[1]->Fill((r->Jet_vtxMass)[jetInd], w) ;
-     jet1_tche[1]->Fill(jetTche, w) ;
-     jet1_tchp[1]->Fill(jetTchp, w) ; 
-
-   }
-   
-   else { //all other jet
-     jet1_pt[4]->Fill(jetPt, w) ;
-     jet1_eta[4]->Fill(jetEta, w) ;
-     jet1_csv[4]->Fill((r->Jet_btagCSV)[jetInd], w) ;
-     jet1_vtxMass[4]->Fill((r->Jet_vtxMass)[jetInd], w) ;
-     //if (jetTche > -50 && jetTche < 0) jet1_vtxMass_negtche[4]->Fill((r->Jet_vtxMass)[jetInd], w) ;
-     jet1_tche[4]->Fill(jetTche, w) ;
-     jet1_tchp[4]->Fill(jetTchp, w) ; 
-   }
-
-}
-
-void HistTaggedJet::Write() {
-  for(int i = 0 ; i < 5 ; ++i) {
-    jet1_pt[i]->Write() ;
-    jet1_pt_bjet_weighted->Write() ;
-    jet1_eta[i]->Write() ;
-    jet1_csv[i]->Write() ;
-    jet1_vtxMass[i]->Write() ;
-    jet1_vtxMass_bjet_weighted->Write() ;
-    //jet1_vtxMass_negtche[i]->Write() ;
-    jet1_tche[i]->Write() ;
-    jet1_tchp[i]->Write() ;
-  }
-}
-
-
-//=======function of HistBasicJet=======
-
-void HistBasicJet::Book(TString regionName) {
-
-  TString nameTmp = "jet_pt_all_" + regionName ;
-  jet_pt[0]= new TH1D(nameTmp, "", GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  jet_pt[0]->Sumw2() ; 
-  nameTmp = "jet_eta_all_" + regionName ;
-  jet_eta[0]= new TH1D(nameTmp, "", GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-  jet_eta[0]->Sumw2() ; 
-  nameTmp = "jet_vtxMass_all_" + regionName ;
-  jet_vtxMass[0]= new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  jet_vtxMass[0]->Sumw2() ; 
-  nameTmp = "jet_jp_all_" + regionName ;
-  jet_jp[0] = new TH1D(nameTmp, "", GLOBC::NBIN_JP, 0, GLOBC::MAX_JP) ;
-  jet_jp[0]->Sumw2() ; 
-  nameTmp = "jet_csv_all_" + regionName ;
-  jet_csv[0] = new TH1D(nameTmp, "", GLOBC::NBIN_CSV, GLOBC::MIN_CSV, GLOBC::MAX_CSV) ;
-  jet_csv[0]->Sumw2() ;
-
-  nameTmp = "jet_pt_lJet_" + regionName ;
-  jet_pt[1]= new TH1D(nameTmp, "", GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  jet_pt[1]->Sumw2() ;
-  nameTmp = "jet_eta_lJet_" + regionName ;
-  jet_eta[1]= new TH1D(nameTmp, "", GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-  jet_eta[1]->Sumw2() ;
-  nameTmp = "jet_vtxMass_lJet_" + regionName ;
-  jet_vtxMass[1]= new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  jet_vtxMass[1]->Sumw2() ;
-  nameTmp = "jet_jp_lJet_" + regionName ;
-  jet_jp[1] = new TH1D(nameTmp, "", GLOBC::NBIN_JP, 0, GLOBC::MAX_JP) ;
-  jet_jp[1]->Sumw2() ; 
-  nameTmp = "jet_csv_lJet_" + regionName ;
-  jet_csv[1] = new TH1D(nameTmp, "", GLOBC::NBIN_CSV, GLOBC::MIN_CSV, GLOBC::MAX_CSV) ;
-  jet_csv[1]->Sumw2() ;
-
-  nameTmp = "jet_pt_bJet_" + regionName ;
-  jet_pt[2]= new TH1D(nameTmp, "", GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  jet_pt[2]->Sumw2() ;
-  nameTmp = "jet_eta_bJet_" + regionName ;
-  jet_eta[2]= new TH1D(nameTmp, "", GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-  jet_eta[2]->Sumw2() ;
-  nameTmp = "jet_vtxMass_bJet_" + regionName ;
-  jet_vtxMass[2]= new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  jet_vtxMass[2]->Sumw2() ;
-  nameTmp = "jet_jp_bJet_" + regionName ;
-  jet_jp[2] = new TH1D(nameTmp, "", GLOBC::NBIN_JP, 0, GLOBC::MAX_JP) ;
-  jet_jp[2]->Sumw2() ; 
-  nameTmp = "jet_csv_bJet_" + regionName ;
-  jet_csv[2] = new TH1D(nameTmp, "", GLOBC::NBIN_CSV, GLOBC::MIN_CSV, GLOBC::MAX_CSV) ;
-  jet_csv[2]->Sumw2() ;
-
-  
-  nameTmp = "jet_pt_cJet_" + regionName ;
-  jet_pt[3]= new TH1D(nameTmp, "", GLOBC::NBIN_PT, 0, GLOBC::MAX_PT) ;
-  jet_pt[3]->Sumw2() ; 
-  nameTmp = "jet_eta_cJet_" + regionName ;
-  jet_eta[3]= new TH1D(nameTmp, "", GLOBC::NBIN_ETA, GLOBC::MIN_ETA, GLOBC::MAX_ETA) ;
-  jet_eta[3]->Sumw2() ; 
-  nameTmp = "jet_vtxMass_cJet_" + regionName ;
-  jet_vtxMass[3]= new TH1D(nameTmp, "", GLOBC::NBIN_VTXMASS, GLOBC::MIN_VTXMASS, GLOBC::MAX_VTXMASS) ;
-  jet_vtxMass[3]->Sumw2() ;
-  nameTmp = "jet_jp_cJet_" + regionName ;
-  jet_jp[3] = new TH1D(nameTmp, "", GLOBC::NBIN_JP, 0, GLOBC::MAX_JP) ;
-  jet_jp[3]->Sumw2() ; 
-  nameTmp = "jet_csv_cJet_" + regionName ;
-  jet_csv[3] = new TH1D(nameTmp, "", GLOBC::NBIN_CSV, GLOBC::MIN_CSV, GLOBC::MAX_CSV) ;
-  jet_csv[3]->Sumw2() ;
-
-
-
-}
-
-void HistBasicJet::Fill(BaseTree* r, int jetInd, double w) {
-  //int jetType = (r->Jet_flavour)[jetInd] ; 
-  int jetType = 1 ; 
-  float jetPt = (r->Jet_pt)[jetInd] ;
-  float jetEta = (r->Jet_eta)[jetInd] ;
-  float jetVtxMass = (r->Jet_vtxMass)[jetInd] ;
-  float jetCSV = (r->Jet_btagCSV)[jetInd] ;
-  
-  jet_pt[0]->Fill(jetPt, w) ;
-  jet_eta[0]->Fill(jetEta, w) ;
-  jet_vtxMass[0]->Fill(jetVtxMass, w) ;
-  //jet_jp[0]->Fill((r->Jet_jp)[jetInd], w) ;
-  jet_csv[0]->Fill(jetCSV, w) ;
-
-  if (abs(jetType) == 4) { //c-jet
-    jet_pt[3]->Fill(jetPt, w) ;
-    jet_eta[3]->Fill(jetEta, w) ;
-    jet_vtxMass[3]->Fill(jetVtxMass, w) ;
-    //jet_jp[3]->Fill((r->Jet_jp)[jetInd], w) ;
-    jet_csv[3]->Fill(jetCSV, w) ;
-  }
-
-  if (abs(jetType) == 5) { //b-jet
-     jet_pt[2]->Fill(jetPt, w) ;
-     jet_eta[2]->Fill(jetEta, w) ;
-     jet_vtxMass[2]->Fill((r->Jet_vtxMass)[jetInd], w) ;
-   //  jet_jp[2]->Fill((r->Jet_jp)[jetInd], w) ;
-     jet_csv[2]->Fill(jetCSV, w) ;
-   }
-   
-   if ((abs(jetType) < 4) || abs(jetType) == 21) { //light-jet
-     jet_pt[1]->Fill(jetPt, w) ;
-     jet_eta[1]->Fill(jetEta, w) ;
-     jet_vtxMass[1]->Fill((r->Jet_vtxMass)[jetInd], w) ;
-    // jet_jp[1]->Fill((r->Jet_jp)[jetInd], w) ;
-     jet_csv[1]->Fill(jetCSV, w) ;
-   }
-
-   
-}
-
-void HistBasicJet::Write() {
-  for(int i = 0 ; i < 4 ; ++i) {
-    jet_pt[i]->Write() ;
-    jet_eta[i]->Write() ;
-    jet_vtxMass[i]->Write() ;
-    jet_jp[i]->Write() ;
-  }
-
-}
-
 
 //------------All utility function--------------
 double Aux::DeltaPhi(double phi1, double phi2) {
@@ -1134,6 +792,18 @@ vector<float> Aux::XY(float t, float phi) {
   xy.push_back(x) ;
   xy.push_back(y) ;
   return xy ;
+}
+
+float dRminMax(double eta1, double phi1, vector<double> eta2s, vector<double> phi2s, bool doFindDrMax) {
+  float dRminMaxTmp = 100 ;
+  if (doFindDrMax) dRminMaxTmp = -1 ;
+  double dRtmp = dRminMaxTmp ;
+  for (unsigned i = 0; i < eta2s.size(); i++) {
+    double dRtmp = Aux::DeltaR(eta1, phi1, eta2s[i], phi2s[i]) ;
+    if (!doFindDrMax && dRtmp < dRminMaxTmp) dRminMaxTmp = dRtmp ;
+    if (doFindDrMax && dRtmp > dRminMaxTmp) dRminMaxTmp = dRtmp ;
+  }
+  return dRminMaxTmp ;
 }
 
 float Aux::ResolutionBias_NOM(float eta) 

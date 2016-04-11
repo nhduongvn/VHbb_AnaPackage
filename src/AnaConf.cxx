@@ -14,9 +14,9 @@ void AnaConf::dump() const
   {
     using std::cout;
     using std::endl;
-    cout << "-------------------- Configuration  --------------------" << endl;
+    cout << "\n-------------------- Configuration  --------------------" << endl;
     cout << "- Name               " <<  this->GetName() << endl;
-    cout << "- is data            " <<  m_IsData << endl;
+    cout << "- Is data            " <<  m_IsData << endl;
     cout << "--------------------------------------------------------" << endl;
   }
 

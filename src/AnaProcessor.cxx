@@ -3,6 +3,7 @@
 
 AnaProcessor::AnaProcessor(TTree* t)
 {
+  m_lheHTcut = 10000 ;
 }
 
 void AnaProcessor::Init(TTree *tree)
@@ -58,6 +59,15 @@ void AnaProcessor::SlaveBegin(TTree *tree)
  if (!(m_fFile = m_fProofFile->OpenFile("RECREATE"))) {
    Warning("SlaveBegin", "problems creating file: %s/%s", m_fProofFile->GetDir(), m_fProofFile->GetFileName());
  }
+ 
+  TString option = GetOption() ;
+  if (option.Contains("USE_LHE_CUT")) m_lheHTcut = 100 ;
+  
+  cout << "\n----INFO: lheHT is set at " << m_lheHTcut ; 
+
+  hProcessedEvent = new TH1D("ProcessedEvents", "", 1, 0, 2) ;
+  hGenWeight = new TH1D("GenWeight", "", 2, 0, 2) ;
+  h_lheHT = new TH1D("lheHT", "", 1000, 0, 1000) ;
 
   //opt =  (TNamed*) fInput->FindObject("DATA_TYPE") ;
   //if (opt ) m_dataType = opt->GetTitle() ;
@@ -77,6 +87,16 @@ Bool_t  AnaProcessor::Process(Long64_t entry)
   //cout << "\n Entry is " << entry ;
   //cout << "\n Number of selection is " << m_selections.size() ;
   BaseTree::GetEntry(entry);
+  
+  hProcessedEvent->Fill(1) ;
+
+#ifdef MCFILE
+  if (genWeight > 0) hGenWeight->Fill(0.5, genWeight) ;
+  else hGenWeight->Fill(1.5, -1*genWeight) ;
+  if (lheHT < m_lheHTcut) h_lheHT->Fill(lheHT) ;
+  else return kTRUE ;
+#endif
+
   for ( std::vector<AnaBaseSelector*>::iterator it = m_selections.begin(); 
 	it != m_selections.end(); it++  )
   {
@@ -134,14 +154,39 @@ void AnaProcessor::buildSelectionList()
     {
       const AnaConf* conf = dynamic_cast<AnaConf*>(obj);
       conf->dump();
-      if (conf->SelectionName() == "SR0") {
-        SR* sel = new SR(0);
+      if (conf->SelectionName() == "SR_ZH") {
+        SR* sel = new SR(conf->SelectionName(), conf->IsData(), 1);
         AnaBaseSelector* selection = 0;
         selection = dynamic_cast<AnaBaseSelector*>(sel);
         if ( ! selection ) throw std::invalid_argument("Unknown selection type");
-        selection->setIsData(conf->IsData());
         m_selections.push_back(selection) ;
       }
+      
+      if (conf->SelectionName() == "CR_ZH_ZLF") {
+        CR_ZLF* sel = new CR_ZLF(conf->SelectionName(), conf->IsData(), 1);
+        AnaBaseSelector* selection = 0;
+        selection = dynamic_cast<AnaBaseSelector*>(sel);
+        if ( ! selection ) throw std::invalid_argument("Unknown selection type");
+        m_selections.push_back(selection) ;
+      }
+
+      if (conf->SelectionName() == "CR_ZH_ZHF") {
+        CR_ZHF* sel = new CR_ZHF(conf->SelectionName(), conf->IsData(), 1);
+        AnaBaseSelector* selection = 0;
+        selection = dynamic_cast<AnaBaseSelector*>(sel);
+        if ( ! selection ) throw std::invalid_argument("Unknown selection type");
+        m_selections.push_back(selection) ;
+      }
+      
+      if (conf->SelectionName() == "CR_ZH_TT") {
+        CR_TT* sel = new CR_TT(conf->SelectionName(), conf->IsData(), 1);
+        AnaBaseSelector* selection = 0;
+        selection = dynamic_cast<AnaBaseSelector*>(sel);
+        if ( ! selection ) throw std::invalid_argument("Unknown selection type");
+        m_selections.push_back(selection) ;
+      }
+
+
     }
   }
 }
