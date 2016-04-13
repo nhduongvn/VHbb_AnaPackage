@@ -96,12 +96,19 @@ Bool_t  AnaProcessor::Process(Long64_t entry)
   if (lheHT < m_lheHTcut) h_lheHT->Fill(lheHT) ;
   else return kTRUE ;
 #endif
+  
+  float pUw(1) ;
+#ifdef MCFILE
+  pUw = Aux::weight2(nTrueInt) ;
+#endif  
 
   for ( std::vector<AnaBaseSelector*>::iterator it = m_selections.begin(); 
 	it != m_selections.end(); it++  )
   {
     //cout << "\n I am inside selection loop" ;
-    (*it)->Process(this);
+    //==set PU weight==
+    (*it)->setWei(pUw) ;
+    (*it)->Process(this) ;
   }
   return kTRUE;
 }
