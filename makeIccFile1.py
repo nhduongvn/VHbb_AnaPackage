@@ -40,7 +40,8 @@ for line in lines:
   if line.find("SetBranchAddress") != -1:
     a = line.split('",')[1].split(', ')[0].replace(' ','').replace('&','')
     for line1 in source_file_lines:
-      if line1.find('//') > -1:
+      #if line1.find('//') > -1:
+      if line1.lstrip().split('//')[0] == '':
         continue
       if line1.find(a) != -1:
         b = line.replace('fChain->', '')
