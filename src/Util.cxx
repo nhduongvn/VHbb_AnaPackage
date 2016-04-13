@@ -421,8 +421,8 @@ void HistVBoostedH::Book(TString regionName) {
   m_H.Book(m_type + "_" + regionName) ;
 }
 
-void HistVBoostedH::Fill(const BaseTree* r, const Obj& lep1, const Obj& lep2, const Obj& fatJet, const vector<Obj>& jets, double w) {
-  m_Z.Fill(r, lep1, lep2, w) ;
+void HistVBoostedH::Fill(const BaseTree* r, const Obj& lep1, const Obj& lep2, const Obj& fatJet, const vector<Obj>& jets, double w, double boostedH_mass) {
+  m_Z.Fill(r, lep1, lep2, w, boostedH_mass) ;
   m_H.Fill(r, fatJet, jets, w) ;
 }
 

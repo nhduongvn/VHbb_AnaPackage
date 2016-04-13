@@ -534,7 +534,7 @@ class HistVBoostedH {
     } ; 
     virtual ~HistVBoostedH() {} ;
     void Book(TString regionName) ;
-    void Fill(const BaseTree* r, const Obj& lep1, const Obj& lep2, const Obj& fatJet, const vector<Obj>& jets, double w=1.) ;
+    void Fill(const BaseTree* r, const Obj& lep1, const Obj& lep2, const Obj& fatJet, const vector<Obj>& jets, double w=1., double boostedH_mass=-1) ;
     void Write() {} ;
 } ;
 
