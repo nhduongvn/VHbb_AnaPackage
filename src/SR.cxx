@@ -142,7 +142,13 @@ void SR::Process(const BaseTree* r)
 
   if (!doPassTrigger) return ;
 
+//TEMP: weight = 1 
   m_wei = 1. ;
+  
+  float bTagWei(1) ;
+#ifdef MCFILE
+  bTagWei = (r->bTagWeight) ;
+#endif
 
   Obj objTmp ;
   
@@ -179,13 +185,14 @@ void SR::Process(const BaseTree* r)
 
   vector<Obj> fatJets ; 
   int nFatJet(0) ;
-  float fatJetPtCut = 100 ;
+  float fatJetPtCut = 200 ;
+  float bTagSubjet = 0.605 ;
   float dRcut = 1.5 ;
   float dRtmp = -1 ;
   for (int i = 0; i < r->nFatjetCA15pruned; i++) {
     dRtmp = Aux::DeltaR(r->V_eta, r->V_phi, r->FatjetCA15pruned_eta[i], r->FatjetCA15pruned_phi[i]) ;
     if (r->FatjetCA15pruned_pt[i] > fatJetPtCut) {
-      hDr->Fill(dRtmp, m_wei) ;
+      hDr->Fill(dRtmp) ;
       if (dRtmp > dRcut) nFatJet++ ;
     }
     if (r->FatjetCA15pruned_pt[i] > fatJetPtCut && dRtmp >= dRcut) {
@@ -202,7 +209,7 @@ void SR::Process(const BaseTree* r)
   std::vector<Obj> boostedHjets_noBtag ; //no btag for efficiency study
   for (int i = 0; i < r->nSubjetCA15pruned; i++) {
     objTmp.Set("SubjetCA15pruned", i, r) ;
-    if(objTmp.SelectBoostedHjet(r, GLOBC::HJET_PT, 0.0, false, true)) boostedHjets.push_back(objTmp) ;
+    if(objTmp.SelectBoostedHjet(r, GLOBC::HJET_PT, bTagSubjet, false, true)) boostedHjets.push_back(objTmp) ;
     if(objTmp.SelectJet(20)) boostedHjets_noBtag.push_back(objTmp) ;
   }
   
@@ -234,25 +241,26 @@ void SR::Process(const BaseTree* r)
   } //two hjets
 
   if (vLeps.size() == 2 && fatJets.size() > 0 && boostedHjets_matched.size() >=2) {
+    float hMass = Cal_Hmass(boostedHjets_matched) ;
     if (fatJets[0].SubJetTag(boostedHjets_matched[0], boostedHjets_matched[1])) {
-    if (r->V_pt > lowVptCut && (r->V_mass) > 75 && (r->V_mass) < 105) {
+    if (r->V_pt > lowVptCut && (r->V_mass) > 75 && (r->V_mass) < 105 && hMass < 250) {
       boosted_selected = true ;
     } //V_mass
     } //SubJetTag
   } //two boostedHjets
   
   if (dijet_selected) {
-    FillVH(r, vLeps, hJets, hist_ZeeH_lowVpt_dijet, hist_ZeeH_highVpt_dijet, hist_ZeeH_noVptCut_dijet, hist_ZmmH_lowVpt_dijet, hist_ZmmH_highVpt_dijet, hist_ZmmH_noVptCut_dijet) ; 
+    FillVH(r, vLeps, hJets, hist_ZeeH_lowVpt_dijet, hist_ZeeH_highVpt_dijet, hist_ZeeH_noVptCut_dijet, hist_ZmmH_lowVpt_dijet, hist_ZmmH_highVpt_dijet, hist_ZmmH_noVptCut_dijet, m_wei*bTagWei) ; 
   }
   if (boosted_selected) {
     FillV_boostedH(r, vLeps, fatJets[0], boostedHjets_matched, hist_ZeeBoostedH_highVpt_boosted, hist_ZeeBoostedH_noVptCut_boosted, hist_ZmmBoostedH_highVpt_boosted, hist_ZmmBoostedH_noVptCut_boosted) ;
   }
   if (dijet_selected && boosted_selected) { 
-    FillVH(r, vLeps, hJets, hist_ZeeH_lowVpt_dijet_boosted, hist_ZeeH_highVpt_dijet_boosted, hist_ZeeH_noVptCut_dijet_boosted, hist_ZmmH_lowVpt_dijet_boosted, hist_ZmmH_highVpt_dijet_boosted, hist_ZmmH_noVptCut_dijet_boosted) ; 
+    FillVH(r, vLeps, hJets, hist_ZeeH_lowVpt_dijet_boosted, hist_ZeeH_highVpt_dijet_boosted, hist_ZeeH_noVptCut_dijet_boosted, hist_ZmmH_lowVpt_dijet_boosted, hist_ZmmH_highVpt_dijet_boosted, hist_ZmmH_noVptCut_dijet_boosted, m_wei*bTagWei) ; 
     FillV_boostedH(r, vLeps, fatJets[0], boostedHjets_matched, hist_ZeeBoostedH_highVpt_dijet_boosted, hist_ZeeBoostedH_noVptCut_dijet_boosted, hist_ZmmBoostedH_highVpt_dijet_boosted, hist_ZmmBoostedH_noVptCut_dijet_boosted) ;
   }
   if (dijet_selected && !boosted_selected) {
-    FillVH(r, vLeps, hJets, hist_ZeeH_lowVpt_dijet_only, hist_ZeeH_highVpt_dijet_only, hist_ZeeH_noVptCut_dijet_only, hist_ZmmH_lowVpt_dijet_only, hist_ZmmH_highVpt_dijet_only, hist_ZmmH_noVptCut_dijet_only) ; 
+    FillVH(r, vLeps, hJets, hist_ZeeH_lowVpt_dijet_only, hist_ZeeH_highVpt_dijet_only, hist_ZeeH_noVptCut_dijet_only, hist_ZmmH_lowVpt_dijet_only, hist_ZmmH_highVpt_dijet_only, hist_ZmmH_noVptCut_dijet_only, m_wei*bTagWei) ; 
   }
   if (!dijet_selected && boosted_selected) {
     FillV_boostedH(r, vLeps, fatJets[0], boostedHjets_matched, hist_ZeeBoostedH_highVpt_boosted_only, hist_ZeeBoostedH_noVptCut_boosted_only, hist_ZmmBoostedH_highVpt_boosted_only, hist_ZmmBoostedH_noVptCut_boosted_only) ;
@@ -262,43 +270,37 @@ void SR::Process(const BaseTree* r)
   //===efficiency study===
   if (vLeps.size() == 2) {
        
-    h_nFatJet->Fill(nFatJet) ; 
-    hVpt_1->Fill(r->V_pt, m_wei) ;
+    h_nFatJet->Fill(nFatJet, m_wei*bTagWei) ; 
+    hVpt_1->Fill(r->V_pt, m_wei*bTagWei) ;
     
     if (fatJets.size() > 0) {
       
-      hVpt_2->Fill(r->V_pt, m_wei) ;
+      hVpt_2->Fill(r->V_pt, m_wei*bTagWei) ;
            
       if (boostedHjets_matched_noBtag.size() >= 2) {
         
-        hVpt_3->Fill(r->V_pt, m_wei) ;
+        hVpt_3->Fill(r->V_pt, m_wei*bTagWei) ;
 
         //==apply tagging==
         bool passTag1 = TMath::Max(boostedHjets_matched_noBtag[0].m_mass, boostedHjets_matched_noBtag[1].m_mass) < 0.67*fatJets[0].m_mass ? true : false ;
         dRtmp = Aux::DeltaR(boostedHjets_matched_noBtag[0].m_eta, boostedHjets_matched_noBtag[0].m_phi, boostedHjets_matched_noBtag[1].m_eta, boostedHjets_matched_noBtag[1].m_phi) ;
         bool passTag2 = (TMath::Min(boostedHjets_matched_noBtag[0].m_pt*boostedHjets_matched_noBtag[0].m_pt, boostedHjets_matched_noBtag[1].m_pt*boostedHjets_matched_noBtag[1].m_pt)/(fatJets[0].m_mass*fatJets[0].m_mass))*dRtmp*dRtmp > 0.09 ? true : false ;
-        bool passCSV = (boostedHjets_matched_noBtag[0].SelectBoostedHjet(r, GLOBC::HJET_PT, 0.0, false, true) && boostedHjets_matched_noBtag[1].SelectBoostedHjet(r, GLOBC::HJET_PT, 0.0, false, true)) ? true : false ;
+        bool passCSV = (boostedHjets_matched_noBtag[0].SelectBoostedHjet(r, GLOBC::HJET_PT, bTagSubjet, false, true) && boostedHjets_matched_noBtag[1].SelectBoostedHjet(r, GLOBC::HJET_PT, bTagSubjet, false, true)) ? true : false ;
 
         if (passTag1 && passTag2) {
           
-          hVpt_4->Fill(r->V_pt, m_wei) ;
+          hVpt_4->Fill(r->V_pt, m_wei*bTagWei) ;
 
           if (passCSV) {
 
-            hVpt_5->Fill(r->V_pt, m_wei) ;
+            hVpt_5->Fill(r->V_pt, m_wei*bTagWei) ;
           
-            float mass = -1 ;
-            if (boostedHjets_matched_noBtag.size() == 2) {
-              mass = Aux::Mass2(boostedHjets_matched_noBtag[0].m_mass, boostedHjets_matched_noBtag[0].m_pt, boostedHjets_matched_noBtag[0].m_eta, boostedHjets_matched_noBtag[0].m_phi, boostedHjets_matched_noBtag[1].m_mass, boostedHjets_matched_noBtag[1].m_pt, boostedHjets_matched_noBtag[1].m_eta, boostedHjets_matched_noBtag[1].m_phi, true) ;   
-            }
-            if (boostedHjets_matched_noBtag.size() >= 3) {
-              mass = Aux::Mass3(boostedHjets_matched_noBtag[0].m_mass, boostedHjets_matched_noBtag[0].m_pt, boostedHjets_matched_noBtag[0].m_eta, boostedHjets_matched_noBtag[0].m_phi, boostedHjets_matched_noBtag[1].m_mass, boostedHjets_matched_noBtag[1].m_pt, boostedHjets_matched_noBtag[1].m_eta, boostedHjets_matched_noBtag[1].m_phi, boostedHjets_matched_noBtag[2].m_mass, boostedHjets_matched_noBtag[2].m_pt, boostedHjets_matched_noBtag[2].m_eta, boostedHjets_matched_noBtag[2].m_phi, true) ;
-            }
+            float mass = Cal_Hmass(boostedHjets_matched_noBtag) ;
             
-            hMassTest->Fill(mass, m_wei) ;
-            if (mass < 175 && mass > 75) { //+/-1sigma
+            hMassTest->Fill(mass, m_wei*bTagWei) ;
+            if (mass < 150 && mass > 90) { 
             
-              hVpt_6->Fill(r->V_pt, m_wei) ;
+              hVpt_6->Fill(r->V_pt, m_wei*bTagWei) ;
           
             }
           } //pass CSV
@@ -309,17 +311,17 @@ void SR::Process(const BaseTree* r)
   } //end vLeps == 2
 } //end process
 
-void SR::FillVH(const BaseTree* r, const vector<Obj>& vLeps, const vector<Obj>& hJets, HistVH& hist_ZeeH_lowVpt, HistVH& hist_ZeeH_highVpt, HistVH& hist_ZeeH_noVptCut, HistVH& hist_ZmmH_lowVpt, HistVH& hist_ZmmH_highVpt, HistVH& hist_ZmmH_noVptCut) {
+void SR::FillVH(const BaseTree* r, const vector<Obj>& vLeps, const vector<Obj>& hJets, HistVH& hist_ZeeH_lowVpt, HistVH& hist_ZeeH_highVpt, HistVH& hist_ZeeH_noVptCut, HistVH& hist_ZmmH_lowVpt, HistVH& hist_ZmmH_highVpt, HistVH& hist_ZmmH_noVptCut, double wei) {
   float VptCut = 100 ;
   if ((r->Vtype) == 1) { //Zee
-    hist_ZeeH_noVptCut.Fill(r, vLeps[0], vLeps[1], hJets[0], hJets[1], m_wei) ; 
-    if (r->V_pt < VptCut) hist_ZeeH_lowVpt.Fill(r, vLeps[0], vLeps[1], hJets[0], hJets[1], m_wei) ; 
-    if (r->V_pt > VptCut) hist_ZeeH_highVpt.Fill(r, vLeps[0], vLeps[1], hJets[0], hJets[1], m_wei) ; 
+    hist_ZeeH_noVptCut.Fill(r, vLeps[0], vLeps[1], hJets[0], hJets[1], wei) ; 
+    if (r->V_pt < VptCut) hist_ZeeH_lowVpt.Fill(r, vLeps[0], vLeps[1], hJets[0], hJets[1], wei) ; 
+    if (r->V_pt > VptCut) hist_ZeeH_highVpt.Fill(r, vLeps[0], vLeps[1], hJets[0], hJets[1], wei) ; 
   } //Zee
   if ((r->Vtype) == 0) {
-    hist_ZmmH_noVptCut.Fill(r, vLeps[0], vLeps[1], hJets[0], hJets[1], m_wei) ; 
-    if (r->V_pt < VptCut) hist_ZmmH_lowVpt.Fill(r, vLeps[0], vLeps[1], hJets[0], hJets[1], m_wei) ;
-    if (r->V_pt > VptCut) hist_ZmmH_highVpt.Fill(r, vLeps[0], vLeps[1], hJets[0], hJets[1], m_wei) ;
+    hist_ZmmH_noVptCut.Fill(r, vLeps[0], vLeps[1], hJets[0], hJets[1], wei) ; 
+    if (r->V_pt < VptCut) hist_ZmmH_lowVpt.Fill(r, vLeps[0], vLeps[1], hJets[0], hJets[1], wei) ;
+    if (r->V_pt > VptCut) hist_ZmmH_highVpt.Fill(r, vLeps[0], vLeps[1], hJets[0], hJets[1], wei) ;
   } //Zmumu
 }
 
@@ -335,6 +337,17 @@ void SR::FillV_boostedH(const BaseTree* r, const vector<Obj>& vLeps, const Obj& 
     if (r->V_pt > VptCut) hist_ZmmBoostedH_highVpt.Fill(r, vLeps[0], vLeps[1], fatJet, boostedHjets_matched, m_wei) ; 
   }
 
+}
+
+float SR::Cal_Hmass(vector<Obj> jets) {
+ float mass = -1 ;
+ if (jets.size() == 2) {
+   mass = Aux::Mass2(jets[0].m_mass, jets[0].m_pt, jets[0].m_eta, jets[0].m_phi, jets[1].m_mass, jets[1].m_pt, jets[1].m_eta, jets[1].m_phi, true) ;   
+ }
+ if (jets.size() >= 3) {
+   mass = Aux::Mass3(jets[0].m_mass, jets[0].m_pt, jets[0].m_eta, jets[0].m_phi, jets[1].m_mass, jets[1].m_pt, jets[1].m_eta, jets[1].m_phi, jets[2].m_mass, jets[2].m_pt, jets[2].m_eta, jets[2].m_phi, true) ;
+ }
+ return mass ;
 }
 
 void SR::SlaveTerminate(const BaseTree* r) 

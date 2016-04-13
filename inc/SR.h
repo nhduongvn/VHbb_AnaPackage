@@ -19,9 +19,11 @@ public:
   virtual void    SlaveTerminate(const BaseTree* r);
   virtual void    Terminate(TList* mergedList); //virtual if overriden on derived class, the function of derived class will called if object of derived class was used ("late" binding or run-time binding), otherwise use base class function ("early" binding or compiler binding 
   
-  void FillVH(const BaseTree* r, const vector<Obj>& vLeps, const vector<Obj>& hJets, HistVH& hist_ZeeH_lowVpt, HistVH& hist_ZeeH_highVpt, HistVH& hist_ZeeH_noVptCut, HistVH& hist_ZmmH_lowVpt, HistVH& hist_ZmmH_highVpt, HistVH& hist_ZmmH_noVptCut) ;
+  void FillVH(const BaseTree* r, const vector<Obj>& vLeps, const vector<Obj>& hJets, HistVH& hist_ZeeH_lowVpt, HistVH& hist_ZeeH_highVpt, HistVH& hist_ZeeH_noVptCut, HistVH& hist_ZmmH_lowVpt, HistVH& hist_ZmmH_highVpt, HistVH& hist_ZmmH_noVptCut, double wei=1) ;
 
   void FillV_boostedH(const BaseTree* r, const vector<Obj>& vLeps, const Obj& fatJet, const vector<Obj>& boostedHjets_matched, HistVBoostedH& hist_ZeeBoostedH_highVpt, HistVBoostedH& hist_ZeeBoostedH_noVptCut, HistVBoostedH& hist_ZmmBoostedH_highVpt, HistVBoostedH& hist_ZmmBoostedH_noVptCut) ; 
+
+  float Cal_Hmass(vector<Obj> jets) ;
 
  private:
 

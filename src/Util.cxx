@@ -336,11 +336,12 @@ void HistZ::Book(TString regionName) {
   vpt_Hmass_cut = new TH1D("Vpt_Hmass_cut_" + regionName, "", GLOBC::NBIN_MASS, 0, GLOBC::MAX_MASS) ;
 }
 
-void HistZ::Fill(const BaseTree* r, const Obj& lep1, const Obj& lep2, double w) {
+void HistZ::Fill(const BaseTree* r, const Obj& lep1, const Obj& lep2, double w, float boostedH_mass) {
   m_l1.Fill(r, lep1, w) ;
   m_l2.Fill(r, lep2, w) ;
   vpt->Fill(r->V_pt, w) ;
-  if (r->HCSV_reg_mass < 150 && r->HCSV_reg_mass > 90) vpt_Hmass_cut->Fill(r->V_pt, w) ;
+  if (boostedH_mass < 0 && r->HCSV_reg_mass < 150 && r->HCSV_reg_mass > 90) vpt_Hmass_cut->Fill(r->V_pt, w) ;
+  if (boostedH_mass > 90 && boostedH_mass < 150) vpt_Hmass_cut->Fill(r->V_pt, w) ;
 }
 
 void HistZ::Write() {
@@ -377,7 +378,8 @@ void HistBoostedH::Book(TString regionName) {
   m_j1.Book("BoostedH_" + m_type + "_" + regionName) ;
   m_j2.Book("BoostedH_" + m_type + "_" + regionName) ;
   m_j3.Book("BoostedH_" + m_type + "_" + regionName) ;
-  h_mass = new TH1D("BoostedH_mass_" + m_type + "_" + regionName, "", GLOBC::NBIN_MASS, 0, GLOBC::MAX_MASS) ;
+  h_mass_subjets = new TH1D("BoostedH_mass_subjets_" + m_type + "_" + regionName, "", GLOBC::NBIN_MASS, 0, GLOBC::MAX_MASS) ;
+  h_mass_fatJet = new TH1D("BoostedH_mass_fatJet_" + m_type + "_" + regionName, "", GLOBC::NBIN_MASS, 0, GLOBC::MAX_MASS) ;
 }
 
 void HistBoostedH::Fill(const BaseTree* r, const Obj& fatJet, const vector<Obj>& jets, double w) {
@@ -394,7 +396,8 @@ void HistBoostedH::Fill(const BaseTree* r, const Obj& fatJet, const vector<Obj>&
   if (jets.size() >= 3) {
     mass = Aux::Mass3(jets[0].m_mass, jets[0].m_pt, jets[0].m_eta, jets[0].m_phi, jets[1].m_mass, jets[1].m_pt, jets[1].m_eta, jets[1].m_phi, jets[2].m_mass, jets[2].m_pt, jets[2].m_eta, jets[2].m_phi, true) ;
   }
-  h_mass->Fill(mass, w) ;
+  h_mass_subjets->Fill(mass, w) ;
+  h_mass_fatJet->Fill(fatJet.m_mass, w) ;
 }
 
 
@@ -1338,4 +1341,22 @@ float Aux::bTagScale(BaseTree* r, vector<int> jetInds, TString jetType) { //jetT
   return pData/pMC ;
   */ 
   return -1 ;
+}
+
+float Aux::weight2(int i){
+  if(i<0) return 1;
+  if(i>51) return 1;
+  return GLOBC::data2[i]/GLOBC::mc2[i];
+}
+
+float Aux::weight2_up(int i){
+  if(i<0) return 1;
+  if(i>51) return 1;
+  return GLOBC::data2_P[i]/GLOBC::mc2[i];
+}
+
+float Aux::weight2_down(int i){
+  if(i<0) return 1;
+  if(i>51) return 1;
+  return GLOBC::data2_M[i]/GLOBC::mc2[i];
 }
