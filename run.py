@@ -11,24 +11,49 @@
 import sys,os,string, commands
 import time
 
+'''
 def findSubFolders(path, fileList):
   os.system('rm tmp.txt')
   os.system('xrdfs root://cmseos.fnal.gov ls -u ' + path + '/ > tmp.txt')
+  print 'xrdfs root://cmseos.fnal.gov ls -u ' + path + '/ > tmp.txt'
   f = open('tmp.txt')
   lines = f.readlines()
   f.close()
-#  print lines
+  #print lines
   if len(lines) == 0:
     return 0
-#  print lines[0]
+  #print 'line[0] is: ', lines[0]
   if lines[0].find('.root') != -1:
     os.system('xrdfs root://cmseos.fnal.gov ls -u ' + path + '/ >> ' + fileList)
   else:
     for line in lines:
       line = line.replace('\n','')
       line = '/store' + line.split('/store')[1]
-#      print line
+   #   print line
       findSubFolders(line,fileList)
+  return 1
+'''
+
+def findSubFolders(path, fileList):
+  os.system('rm tmp.txt')
+  os.system('xrdfs root://cmseos.fnal.gov ls -u ' + path + '/ > tmp.txt')
+  f = open('tmp.txt')
+  lines = f.readlines()
+  f.close()
+  #print lines
+  if len(lines) == 0:
+    return 0
+  
+  for line in lines:
+    line = line.replace('\n','')
+    if line.find('log.tar.gz') != -1:
+      continue
+    if line.find('.root') != -1:
+      os.system('echo \'' + line + '\' >> ' + fileList)
+    else:
+      line = '/store' + line.split('/store')[1]
+      findSubFolders(line,fileList)
+      
   return 1
 
 
@@ -38,10 +63,11 @@ os.chdir(CWD)
 
 runDir = '/uscms/home/duong/HVbb/AnaPackage/'
 inDS = 'dataList.txt'
-#outFilePrenameAna = "test_04_01_2016" #prename for skim jobs is ds
-outFilePrenameAna = "test_04_07_2016" #prename for skim jobs is ds
+#outFilePrenameAna = "test" #prename for skim jobs is ds
+outFilePrenameAna = "test_04_13_2016" #prename for skim jobs is ds
+#outFilePrenameAna = "testPUscale1" #prename for skim jobs is ds
 runMode = sys.argv[1] #NoProof or ProofLite 
-doLHE_HT_cut = True
+doLHE_HT_cut = True 
 
 base_tree_data = "BaseTree/BaseTree_data_V21"
 base_tree_MC = "BaseTree/BaseTree_MC_V21"
@@ -94,6 +120,7 @@ for line in datalist:
         os.system("python makeIccFile1.py MCFILE")
 
 #create filelist
+
     infiles = 'anafiles_tmp.txt'
     os.system('rm ' + infiles)
     com = ''
@@ -115,7 +142,6 @@ for line in datalist:
        
     print com
     os.system(com)
-
 #run over file list
 
     use_lheHTcut = 'FALSE'

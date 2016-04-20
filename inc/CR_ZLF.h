@@ -23,7 +23,10 @@ public:
 
   // histo stuff
   HistVH hist_ZeeH ;
-  HistVH hist_ZmmH ;
+  HistVH hist_ZmmH ; 
+  HistVBoostedH hist_ZeeBoostedH_boosted ;
+  HistVBoostedH hist_ZmmBoostedH_boosted ;
+  
   TH1D* hCutFlow[2] ; //ele, muon
   TH1D* h_lheHT ;
 

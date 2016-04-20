@@ -12,6 +12,8 @@
    SetBranchAddress("HCSV_pt", &HCSV_pt, &b_HCSV_pt);
    SetBranchAddress("HCSV_mass", &HCSV_mass, &b_HCSV_mass);
    SetBranchAddress("V_pt", &V_pt, &b_V_pt);
+   SetBranchAddress("V_eta", &V_eta, &b_V_eta);
+   SetBranchAddress("V_phi", &V_phi, &b_V_phi);
    SetBranchAddress("V_mass", &V_mass, &b_V_mass);
    SetBranchAddress("HCSV_reg_mass", &HCSV_reg_mass, &b_HCSV_reg_mass);
    SetBranchAddress("hJCidx", hJCidx, &b_hJCidx);
@@ -22,6 +24,17 @@
    SetBranchAddress("vLeptons_eta", vLeptons_eta, &b_vLeptons_eta);
    SetBranchAddress("vLeptons_phi", vLeptons_phi, &b_vLeptons_phi);
    SetBranchAddress("vLeptons_mass", vLeptons_mass, &b_vLeptons_mass);
+   SetBranchAddress("nFatjetCA15pruned", &nFatjetCA15pruned, &b_nFatjetCA15pruned);
+   SetBranchAddress("FatjetCA15pruned_pt", FatjetCA15pruned_pt, &b_FatjetCA15pruned_pt);
+   SetBranchAddress("FatjetCA15pruned_eta", FatjetCA15pruned_eta, &b_FatjetCA15pruned_eta);
+   SetBranchAddress("FatjetCA15pruned_phi", FatjetCA15pruned_phi, &b_FatjetCA15pruned_phi);
+   SetBranchAddress("FatjetCA15pruned_mass", FatjetCA15pruned_mass, &b_FatjetCA15pruned_mass);
+   SetBranchAddress("nSubjetCA15pruned", &nSubjetCA15pruned, &b_nSubjetCA15pruned);
+   SetBranchAddress("SubjetCA15pruned_pt", SubjetCA15pruned_pt, &b_SubjetCA15pruned_pt);
+   SetBranchAddress("SubjetCA15pruned_eta", SubjetCA15pruned_eta, &b_SubjetCA15pruned_eta);
+   SetBranchAddress("SubjetCA15pruned_phi", SubjetCA15pruned_phi, &b_SubjetCA15pruned_phi);
+   SetBranchAddress("SubjetCA15pruned_mass", SubjetCA15pruned_mass, &b_SubjetCA15pruned_mass);
+   SetBranchAddress("SubjetCA15pruned_btag", SubjetCA15pruned_btag, &b_SubjetCA15pruned_btag);
    SetBranchAddress("selLeptons_charge", selLeptons_charge, &b_selLeptons_charge);
    SetBranchAddress("selLeptons_pt", selLeptons_pt, &b_selLeptons_pt);
    SetBranchAddress("selLeptons_eta", selLeptons_eta, &b_selLeptons_eta);
@@ -33,4 +46,5 @@
    SetBranchAddress("Jet_pt", Jet_pt, &b_Jet_pt);
    SetBranchAddress("Jet_eta", Jet_eta, &b_Jet_eta);
    SetBranchAddress("Jet_phi", Jet_phi, &b_Jet_phi);
+   SetBranchAddress("Jet_mass", Jet_mass, &b_Jet_mass);
    SetBranchAddress("Jet_vtxMass", Jet_vtxMass, &b_Jet_vtxMass);

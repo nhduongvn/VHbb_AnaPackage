@@ -11,6 +11,8 @@ CR_TT::CR_TT(string region, bool isData, double wei):
   
   hist_ZeeH.set("ZeeH") ;
   hist_ZmmH.set("ZmmH") ;
+  hist_ZeeBoostedH_boosted.set("ZeeBoostedH_subjetCA15pruned_boosted") ;
+  hist_ZmmBoostedH_boosted.set("ZmmBoostedH_subjetCA15pruned_boosted") ;
   
 }
 
@@ -29,6 +31,8 @@ void CR_TT::SlaveBegin(const BaseTree* r)
     
   hist_ZeeH.Book(m_region) ;
   hist_ZmmH.Book(m_region) ;
+  hist_ZeeBoostedH_boosted.Book(m_region) ;
+  hist_ZmmBoostedH_boosted.Book(m_region) ;
 
 };
 
@@ -84,7 +88,21 @@ void CR_TT::Process(const BaseTree* r)
   if (objTmp.SelectTagJet(r, GLOBC::HJET_PT, 0.935)) hJets.push_back(objTmp) ; 
   objTmp.Set("hjet", (r->hJCidx)[1], r) ;
   if (objTmp.SelectTagJet(r, GLOBC::HJET_PT, 0.46)) hJets.push_back(objTmp) ; 
- 
+
+  std::vector<Obj> fatJets ;
+  std::vector<Obj> subJets ;
+  float bTagSubjetCuts[2] = {0.935, 0.46} ;
+  float fatJetPtCut = 200 ;
+  float dRcut = 1.5 ;
+  for (int i = 0; i < r->nFatjetCA15pruned; i++) {
+    objTmp.Set("FatjetCA15pruned", i, r) ;
+    if (objTmp.SelectFatJet(r, fatJetPtCut, dRcut)) fatJets.push_back(objTmp) ;
+  } //end loop over fat jet
+     
+  sort(fatJets.begin(), fatJets.end(), greater<Obj>()) ;
+
+  if(fatJets.size() > 0) Aux::GetSubjets(r, fatJets[0], subJets, bTagSubjetCuts, false, true) ;
+
   float bTagWei(1) ;
 #ifdef MCFILE
   bTagWei = (r->bTagWeight) ;
@@ -102,6 +120,19 @@ void CR_TT::Process(const BaseTree* r)
       } //Zmumu
     } //V_mass ...
   } //two hjets
+  
+  if (vLeps.size() == 2 && subJets.size() >= 2) {//at least 2 subjets found
+    float hMass = Aux::Cal_Hmass(subJets) ;
+    if ((r->V_mass > 10) && ((r->V_mass) < 75 || (r->V_mass) > 120) && fatJets[0].m_pt > 200) {
+      if (r->Vtype == 1) {
+        hist_ZeeBoostedH_boosted.Fill(r, vLeps[0], vLeps[1], fatJets[0], subJets, m_wei, hMass) ;
+      }
+      if (r->Vtype == 0) {
+        hist_ZmmBoostedH_boosted.Fill(r, vLeps[0], vLeps[1], fatJets[0], subJets, m_wei, hMass) ;
+      }
+    }
+  }
+
 
 }
 

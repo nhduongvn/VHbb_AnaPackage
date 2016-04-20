@@ -279,7 +279,7 @@ int main(int argc, char **argv)
     //TString objName = obj->GetName();
     //cout << "\n Filename: " << objName << "  " << obj->IsA()->GetName() ;
   //}
-  
+  if (dataTypeIn == "MCFILE") { 
   TH1D* hChainEntry = new TH1D("ChainEntries", "", 1, 0, 2) ;
   hChainEntry->SetBinContent(1, chain.GetEntries()) ;
 
@@ -323,7 +323,7 @@ int main(int argc, char **argv)
   hCount->Write() ;
   hChainEntry->Write() ;
   fTmp->Close() ;
-
+  } //end if (dataType == "MCFILE")
   cout << " --- All done! ---" << endl;
 
 

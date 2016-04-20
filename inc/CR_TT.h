@@ -24,6 +24,8 @@ public:
   // histo stuff
   HistVH hist_ZeeH ;
   HistVH hist_ZmmH ;
+  HistVBoostedH hist_ZeeBoostedH_boosted ;
+  HistVBoostedH hist_ZmmBoostedH_boosted ;
 
   // Syste for Jets
 

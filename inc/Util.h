@@ -343,6 +343,10 @@ namespace Aux {
   float weight2_up(int i) ;
   float weight2_down(int i) ;
 
+  void GetSubjets(const BaseTree* r, Obj fatJet, vector<Obj>& subJets, float bTagSubjetCuts[], bool invert_csvCut=false, bool gtZero_csv=true) ;
+
+  float Cal_Hmass(vector<Obj> jets) ; 
+
 } 
 
 
@@ -373,11 +377,13 @@ class Obj {
     bool SelectGenJet(BaseTree* r) ;
     bool SelectMet(BaseTree* r) ;
     bool SelectTagJet(const BaseTree* r, double ptCut, double csv_cut=0, bool invert_csvCut = false, bool gtZero_csv = false) ;
-    bool SelectBoostedHjet(const BaseTree* r, double ptCut, double csv_cut=0, bool invert_csvCut=false, bool gtZero_csv = false) ;
+    bool SelectBoostedHjet(const BaseTree* r, double ptCut, double csv_cut = -1, bool invert_csvCut=false, bool gtZero_csv = false) ; //by pass csv_cut as default
     bool SubJetTag(Obj jet1, Obj jet2) ;
+    bool SelectFatJet(const BaseTree* r, float ptCut, float dRcut=1.5) ;
     void ApplyJECshift(BaseTree* r, TString uncType, bool doUseAobject=false) ;
     void ApplyJER(BaseTree* r, TString uncType, bool doUseAobject=false) ;
 } ;
+
 
 //==contain histogram with basic information of objects==
 class HistObj {

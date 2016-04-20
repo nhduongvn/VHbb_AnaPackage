@@ -223,10 +223,19 @@ bool Obj::SelectTagJet(const BaseTree* r, double ptCut, double csv_cut, bool inv
   return false ;
 }
 
+bool Obj::SelectFatJet(const BaseTree* r, float ptCut, float dRcut) {
+  if (SelectJet(ptCut)) {
+    float dRtmp = Aux::DeltaR(r->V_eta, r->V_phi, m_eta, m_phi) ;
+    if (dRtmp > dRcut) return true ;
+  }
+  return false ;
+}
+
 bool Obj::SelectBoostedHjet(const BaseTree* r, double ptCut, double csv_cut, bool invert_csvCut, bool gtZero_csv) {
   bool passJet = SelectJet(ptCut) ;
   bool passCsvCut = invert_csvCut ? ((r->SubjetCA15pruned_btag)[m_ind] < csv_cut) : ((r->SubjetCA15pruned_btag)[m_ind] > csv_cut);
   passCsvCut = gtZero_csv ? (passCsvCut && (r->SubjetCA15pruned_btag)[m_ind] > 0) : passCsvCut ;
+  if (passJet && csv_cut < 0) return true ;
   if (passJet && passCsvCut) return true ;
   return false ;
 }
@@ -1360,3 +1369,61 @@ float Aux::weight2_down(int i){
   if(i>51) return 1;
   return GLOBC::data2_M[i]/GLOBC::mc2[i];
 }
+
+float Aux::Cal_Hmass(vector<Obj> jets) {
+ float mass = -1 ;
+ if (jets.size() == 2) {
+   mass = Aux::Mass2(jets[0].m_mass, jets[0].m_pt, jets[0].m_eta, jets[0].m_phi, jets[1].m_mass, jets[1].m_pt, jets[1].m_eta, jets[1].m_phi, true) ;   
+ }
+ if (jets.size() >= 3) {
+   mass = Aux::Mass3(jets[0].m_mass, jets[0].m_pt, jets[0].m_eta, jets[0].m_phi, jets[1].m_mass, jets[1].m_pt, jets[1].m_eta, jets[1].m_phi, jets[2].m_mass, jets[2].m_pt, jets[2].m_eta, jets[2].m_phi, true) ;
+ }
+ return mass ;
+}
+
+
+void Aux::GetSubjets(const BaseTree* r, Obj fatJet, vector<Obj>& subJets, float bTagSubjetCuts[], bool invert_csvCut, bool gtZero_csv) {
+  
+  
+  std::vector<Obj> boostedHjetTmps ;
+  Obj objTmp ;
+  for (int i = 0; i < r->nSubjetCA15pruned; i++) {
+    objTmp.Set("SubjetCA15pruned", i, r) ;
+    if(objTmp.SelectBoostedHjet(r, GLOBC::HJET_PT, -1, invert_csvCut, gtZero_csv)) boostedHjetTmps.push_back(objTmp) ; //by pass csv_cut
+  }
+
+  sort(boostedHjetTmps.begin(), boostedHjetTmps.end(), greater<Obj>()) ;
+  
+
+  std::vector<Obj> boostedHjetTmp1s ; //matched
+  for (unsigned int i = 0; i < boostedHjetTmps.size(); i++) {
+    float dRtmp = Aux::DeltaR(fatJet.m_eta, fatJet.m_phi, boostedHjetTmps[i].m_eta, boostedHjetTmps[i].m_phi) ;
+    if (dRtmp < 1.5) boostedHjetTmp1s.push_back(boostedHjetTmps[i]) ;
+  }
+  
+  if (boostedHjetTmp1s.size() >= 2) { //only consider 2 or more subjets
+    int ind1 = boostedHjetTmp1s[0].m_ind ;
+    int ind2 = boostedHjetTmp1s[1].m_ind ;
+    float minCSV = TMath::Min((r->SubjetCA15pruned_btag)[ind1], (r->SubjetCA15pruned_btag)[ind2]) ;
+    float maxCSV = TMath::Max((r->SubjetCA15pruned_btag)[ind1], (r->SubjetCA15pruned_btag)[ind2]) ;
+    bool passCSV = false ;
+    if (!invert_csvCut) {
+      passCSV = (maxCSV > bTagSubjetCuts[0]) && (minCSV > bTagSubjetCuts[1]) ;
+    }
+    else { 
+      passCSV = (maxCSV < bTagSubjetCuts[0]) && (minCSV < bTagSubjetCuts[1]) ;
+    }
+    passCSV = gtZero_csv ? passCSV && (minCSV > 0) : passCSV ;
+    if (bTagSubjetCuts[0] < 0 && bTagSubjetCuts[1] < 0) passCSV = true ;
+    if (passCSV) {
+      subJets.push_back(boostedHjetTmp1s[0]) ;
+      subJets.push_back(boostedHjetTmp1s[1]) ;
+    }
+    if (boostedHjetTmp1s.size() >= 3) {
+      subJets.push_back(boostedHjetTmp1s[2]) ; 
+    }
+  }
+
+
+}
+

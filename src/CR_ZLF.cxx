@@ -10,6 +10,8 @@ CR_ZLF::CR_ZLF(string region, bool isData, double wei):
   
   hist_ZeeH.set("ZeeH") ;
   hist_ZmmH.set("ZmmH") ;
+  hist_ZeeBoostedH_boosted.set("ZeeBoostedH_subjetCA15pruned_boosted") ;
+  hist_ZmmBoostedH_boosted.set("ZmmBoostedH_subjetCA15pruned_boosted") ;
 
 }
 
@@ -28,7 +30,10 @@ void CR_ZLF::SlaveBegin(const BaseTree* r)
   cout << "\n====================================================" << endl ;
 
   hist_ZeeH.Book(m_region) ;
-  hist_ZmmH.Book(m_region) ;
+  hist_ZmmH.Book(m_region) ; 
+  hist_ZeeBoostedH_boosted.Book(m_region) ;
+  hist_ZmmBoostedH_boosted.Book(m_region) ;
+  
   TString tmpStr = "CutFlow_ZeeH_" + m_region ; 
   hCutFlow[0] = new TH1D(tmpStr, "", 10, 0, 10) ;
   hCutFlow[0]->GetXaxis()->SetBinLabel(1, "All") ;
@@ -119,22 +124,42 @@ void CR_ZLF::Process(const BaseTree* r)
   if (objTmp.SelectTagJet(r, GLOBC::HJET_PT, 0.935, true)) hJets.push_back(objTmp) ; 
   objTmp.Set("hjet", (r->hJCidx)[1], r) ;
   if (objTmp.SelectTagJet(r, GLOBC::HJET_PT, 1, true, true)) hJets.push_back(objTmp) ; 
+    
+  //cout << "\n Size: " << vLeps.size() << "  " << hJets.size() << "  " << nJets << std::endl ;
   
+  std::vector<Obj> fatJets ;
+  std::vector<Obj> subJets ;
+  float bTagSubjetCuts[2] = {0.935, 1} ;
+  float fatJetPtCut = 200 ;
+  float dRcut = 1.5 ;
+  for (int i = 0; i < r->nFatjetCA15pruned; i++) {
+    objTmp.Set("FatjetCA15pruned", i, r) ;
+    if (objTmp.SelectFatJet(r, fatJetPtCut, dRcut)) fatJets.push_back(objTmp) ;
+  } //end loop over fat jet
+     
+  sort(fatJets.begin(), fatJets.end(), greater<Obj>()) ;
+
+  if(fatJets.size() > 0) Aux::GetSubjets(r, fatJets[0], subJets, bTagSubjetCuts, true, true) ;
+
   int nJets(0) ;
+  int nJets_boostedCase(0) ;
   for (int i = 0; i < r->nJet; i++) {
     //if ((r->Jet_puId)[i] == 7 && (r->Jet_pt)[i] > 20 && fabs((r->Jet_eta)[i]) < 2.4) nJets++ ;
     if ((r->Jet_pt)[i] > 20 && fabs((r->Jet_eta)[i]) < 2.4) {
-
+      float dRtmp = fatJets.size() > 0 ? Aux::DeltaR(fatJets[0].m_eta, fatJets[0].m_phi, (r->Jet_eta)[i], (r->Jet_phi)[i]) : 10 ;
 #ifdef MCFILE
-      if ((r->Jet_puId)[i] == 7) nJets++ ;
+      if ((r->Jet_puId)[i] == 7) {
+        nJets++ ;
+        if (dRtmp > dRcut) nJets_boostedCase++ ;
+      }
 #else
       nJets++ ;
+      if (dRtmp > dRcut) nJets_boostedCase++ ;
 #endif
 
     }
   }
-  
-  //cout << "\n Size: " << vLeps.size() << "  " << hJets.size() << "  " << nJets << std::endl ;
+
   
   float bTagWei(1) ;
 #ifdef MCFILE
@@ -155,6 +180,28 @@ void CR_ZLF::Process(const BaseTree* r)
       } //Zmumu
     } //V_mass ...
   } //two hjets
+
+  if (vLeps.size() == 2 && subJets.size() >= 2 && nJets_boostedCase == 0) { //boosted jet found and no extra jets
+    float hMass = Aux::Cal_Hmass(subJets) ;
+    float dPhiTmp = Aux::DeltaPhi(fatJets[0].m_phi, r->V_phi) ;
+    if ((r->V_mass) > 75 && (r->V_mass) < 105 && (r->V_pt) > 100 && fatJets[0].m_pt > 100 && fabs(dPhiTmp) > 2.9) {
+      if (VtypeTmp == 1) { //Zee
+        
+        hist_ZeeBoostedH_boosted.Fill(r, vLeps[0], vLeps[1], fatJets[0], subJets, m_wei, hMass) ;
+      
+      } //Zee
+      if (VtypeTmp == 0) {
+      
+        hist_ZmmBoostedH_boosted.Fill(r, vLeps[0], vLeps[1], fatJets[0], subJets, m_wei, hMass) ;
+      
+      } //Zmumu
+    } //V_mass ...
+
+  
+  }
+
+
+
   
 }
 
